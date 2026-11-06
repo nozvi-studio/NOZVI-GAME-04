@@ -1,0 +1,16 @@
+{
+  "name": "bida-websocket-server",
+  "version": "1.0.0",
+  "description": "Realtime WebSocket Server for 8-Ball Billiards (ASOL Casual Game)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": ["billiards", "websocket", "multiplayer", "game-server"],
+  "author": "ASOL",
+  "license": "MIT",
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

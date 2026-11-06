@@ -1,0 +1,23 @@
+{
+  "accounts": {
+    "admin": {
+      "email": "baobro104@gmail.com",
+      "username": "baobro104",
+      "displayName": "Quản Trị Viên (Admin)",
+      "role": "admin",
+      "createdAt": 1727251200000
+    }
+  },
+  "ranking": {
+    "admin": {
+      "email": "baobro104@gmail.com",
+      "username": "baobro104",
+      "displayName": "Quản Trị Viên (Admin)",
+      "role": "admin",
+      "level": 99,
+      "coins": 9999999,
+      "wins": 999,
+      "updatedAt": 1727251200000
+    }
+  }
+}

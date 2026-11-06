@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "firebase-data-connect": {
+      "source": "firebase/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/firebase-data-connect-basics/SKILL.md",
+      "computedHash": "8bfaff4b91f9dcbd8c48f1e013214f4801c2f9e924473ea8611b72295b7771d1"
+    }
+  }
+}

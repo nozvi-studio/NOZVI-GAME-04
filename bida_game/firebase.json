@@ -1,0 +1,25 @@
+{
+    "flutter": {
+        "platforms": {
+            "android": {
+                "default": {
+                    "projectId": "asol-game",
+                    "appId": "1:698398921018:android:8e374218aee57484994003",
+                    "fileOutput": "android/app/google-services.json"
+                }
+            },
+            "dart": {
+                "lib/firebase_options.dart": {
+                    "projectId": "asol-game",
+                    "configurations": {
+                        "android": "1:698398921018:android:8e374218aee57484994003",
+                        "ios": "1:698398921018:ios:9df2ea35bac9be04994003",
+                        "macos": "1:698398921018:ios:9df2ea35bac9be04994003",
+                        "web": "1:698398921018:web:fc0c8b1e867a542d994003",
+                        "windows": "1:698398921018:web:7148077a9230d8f3994003"
+                    }
+                }
+            }
+        }
+    }
+}
