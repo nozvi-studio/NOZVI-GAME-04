@@ -1,7 +1,7 @@
 name: Deploy Flutter Web
 on:
   push:
-    branches: [Bida-game]
+    branches: [main]
 
 permissions:
   contents: write
