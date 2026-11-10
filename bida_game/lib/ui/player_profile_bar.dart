@@ -514,7 +514,7 @@ class PlayerProfileBar extends StatelessWidget {
                         auth.isLoggedIn
                             ? (auth.isAdmin
                                 ? 'ADMIN'
-                                : (auth.isGuest ? 'guest_offline'.tr : auth.displayName))
+                                : (auth.isGuest ? 'guest_offline'.tr : LanguageService.instance.localizeOpponentName(auth.displayName)))
                             : 'login'.tr,
                         style: TextStyle(
                           color: auth.isLoggedIn && auth.isAdmin ? Colors.black87 : Colors.white,

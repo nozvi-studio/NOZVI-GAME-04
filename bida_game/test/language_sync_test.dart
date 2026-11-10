@@ -27,6 +27,11 @@ void main() {
       expect(MedalCatalog.getById('english_spin_master')!.localizedName, equals('旋转掌控大师'));
       expect(TableSkinCatalog.getById('classic_green').localizedName, equals('经典绿呢台面'));
       expect(auth.displayName, startsWith('游客选手'));
+      expect(langService.localizeOpponentName('Cơ Thủ Khách #3031'), equals('访客球手 #3031'));
+      expect(TableRarity.standard.label, equals('标准'));
+      expect(TableRarity.epic.label, equals('史诗'));
+      expect(TableRarity.legendary.label, equals('传奇'));
+      expect(TableRarity.mythic.label, equals('神话'));
 
       // 3. Test ENGLISH (en)
       langService.setLanguage(AppLanguage.en);
