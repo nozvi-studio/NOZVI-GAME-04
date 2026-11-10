@@ -122,6 +122,12 @@
       "languageVersion": "3.9"
     },
     {
+      "name": "flutter_lints",
+      "rootUri": "file:///C:/Users/ADMIN/AppData/Local/Pub/Cache/hosted/pub.dev/flutter_lints-6.0.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.8"
+    },
+    {
       "name": "flutter_test",
       "rootUri": "file:///C:/src/flutter/packages/flutter_test",
       "packageUri": "lib/",
@@ -186,6 +192,12 @@
       "rootUri": "file:///C:/Users/ADMIN/AppData/Local/Pub/Cache/hosted/pub.dev/leak_tracker_testing-3.0.2",
       "packageUri": "lib/",
       "languageVersion": "3.2"
+    },
+    {
+      "name": "lints",
+      "rootUri": "file:///C:/Users/ADMIN/AppData/Local/Pub/Cache/hosted/pub.dev/lints-6.1.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.8"
     },
     {
       "name": "logging",

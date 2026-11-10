@@ -83,22 +83,26 @@ class BusRushHudBar extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
-                            '🏁 ĐUA GIỜ CAO ĐIỂM',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0.5,
+                          const Expanded(
+                            child: Text(
+                              '🏁 ĐUA GIỜ CAO ĐIỂM',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.3,
+                              ),
                             ),
                           ),
+                          const SizedBox(width: 4),
                           Text(
                             '$playerBuses/$target Xe',
                             style: const TextStyle(
                               color: Color(0xFFFFD54F),
-                              fontSize: 11,
+                              fontSize: 10.5,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
