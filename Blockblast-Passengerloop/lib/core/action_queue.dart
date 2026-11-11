@@ -60,9 +60,11 @@ class ActionQueue {
   /// Thực thi chuỗi 7 bước tuần tự bất đồng bộ khi người chơi thả khối gạch
   Future<ActionQueueExecutionResult> executeBlockDrop({
     required PolyominoShape shape,
+    int? slotIndex,
     required int targetRow,
     required int targetCol,
     required List<PetColor> availableColors,
+    bool isTutorialActive = false,
   }) async {
     if (_isProcessing) {
       return const ActionQueueExecutionResult();
@@ -78,10 +80,14 @@ class ActionQueue {
     String? loseReason;
 
     try {
-      // BƯỚC 1: PLACE_BLOCK - Gắn khối gạch vào bàn cờ 8x8
+      // BƯỚC 1: PLACE_BLOCK - Gắn khối gạch vào bàn cờ 8x8 & xóa ngay ô khay đã dùng
       final placed = gridEngine.placePolyomino(shape, targetRow, targetCol);
       if (!placed) {
         throw Exception('Không thể đặt khối gạch tại ($targetRow, $targetCol)');
+      }
+      if (slotIndex != null && slotIndex >= 0 && slotIndex < smartSpawner.traySlots.length) {
+        smartSpawner.traySlots[slotIndex] = null;
+        smartSpawner.notifyTrayChanged();
       }
       GameEventBus.instance.fire(BlockPlacedEvent(shape: shape, row: targetRow, col: targetCol));
       final tileScore = shape.tiles.length * 10;
@@ -135,14 +141,6 @@ class ActionQueue {
         }
       }
 
-      // Bổ sung khối gạch mới vào khay Next nếu cả 3 khối đã được sử dụng
-      smartSpawner.replenishIfNeeded(
-        availableColors: availableColors,
-        activeBus: busStation.activeBus,
-        nextBus: busStation.nextBus,
-        emptyBoardCells: gridEngine.emptyCellCount,
-      );
-
       // BƯỚC 5: UPDATE_HAZARDS - Đếm ngược Bom và lan Dây Leo
       gridEngine.updateHazards();
       await Future.delayed(const Duration(milliseconds: 120));
@@ -152,7 +150,20 @@ class ActionQueue {
         _chargeHammer(lineResult.totalLines);
       }
 
-      // BƯỚC 7: CHECK_GAME_STATE - Kiểm tra Thắng / Thua
+      // Nạp lại 3 khối gạch vào khay Next (đảm bảo luôn chơi được) TRƯỚC KHI kiểm tra evaluateGameState
+      if (!isTutorialActive) {
+        final bool isTrayEmpty = smartSpawner.traySlots.every((element) => element == null);
+        if (isTrayEmpty) {
+          smartSpawner.refillTrayGuaranteedPlayable(
+            gridEngine: gridEngine,
+            availableColors: availableColors,
+            activeBus: busStation.activeBus,
+            nextBus: busStation.nextBus,
+          );
+        }
+      }
+
+      // BƯỚC 7: CHECK_GAME_STATE (evaluateGameState) - Kiểm tra Thắng / Thua
       if (lost) {
         GameEventBus.instance.fire(GameOverEvent(
           reason: loseReason ?? 'DOCK_OVERFLOW',
@@ -167,7 +178,7 @@ class ActionQueue {
           score: currentScore,
           stars: stars,
         ));
-      } else {
+      } else if (!isTutorialActive) {
         // Kiểm tra xem còn nước đi hợp lệ nào không
         final remaining = smartSpawner.activeShapes;
         final hasMoves = gridEngine.hasValidMoveForShapes(remaining);
@@ -226,15 +237,24 @@ class ActionQueue {
         }
       }
 
-      smartSpawner.replenishIfNeeded(
-        availableColors: availableColors,
-        activeBus: busStation.activeBus,
-        nextBus: busStation.nextBus,
-        emptyBoardCells: gridEngine.emptyCellCount,
-      );
+      final bool isTrayEmpty = smartSpawner.traySlots.every((element) => element == null);
+      if (isTrayEmpty) {
+        smartSpawner.refillTrayGuaranteedPlayable(
+          gridEngine: gridEngine,
+          availableColors: availableColors,
+          activeBus: busStation.activeBus,
+          nextBus: busStation.nextBus,
+        );
+      }
 
-      // Kiểm tra thắng
-      if (busStation.allBusesCleared) {
+      // Kiểm tra thắng / thua
+      if (extractResult.dockOverflow) {
+        GameEventBus.instance.fire(GameOverEvent(
+          reason: 'DOCK_OVERFLOW',
+          level: currentLevel,
+          score: currentScore,
+        ));
+      } else if (busStation.allBusesCleared) {
         final stars = _calculateStars();
         GameEventBus.instance.fire(GameWinEvent(
           level: currentLevel,

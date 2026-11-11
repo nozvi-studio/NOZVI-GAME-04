@@ -6,6 +6,20 @@ import '../core/game_event_bus.dart';
 
 const int kGridSize = 8;
 
+class LinePreviewResult {
+  final bool isValid;
+  final List<int> fullRows;
+  final List<int> fullCols;
+
+  const LinePreviewResult({
+    this.isValid = false,
+    this.fullRows = const [],
+    this.fullCols = const [],
+  });
+
+  bool get hasLinesToClear => fullRows.isNotEmpty || fullCols.isNotEmpty;
+}
+
 class LineEvaluationResult {
   final List<int> fullRows;
   final List<int> fullCols;
@@ -116,6 +130,56 @@ class GridEngine {
     return true;
   }
 
+  /// Kiểm tra giả lập khi đặt khối gạch tại (startRow, startCol):
+  /// Trả về các hàng ngang và cột dọc sẽ phát sáng rực rỡ chuẩn bị nổ!
+  LinePreviewResult previewLinesIfPlaced(PolyominoShape shape, int startRow, int startCol) {
+    if (!canPlacePolyomino(shape, startRow, startCol)) {
+      return const LinePreviewResult(isValid: false);
+    }
+
+    final Set<String> virtualKeys = {};
+    for (final tile in shape.tiles) {
+      virtualKeys.add('${startRow + tile.r},${startCol + tile.c}');
+    }
+
+    final List<int> fullRows = [];
+    final List<int> fullCols = [];
+
+    for (int r = 0; r < kGridSize; r++) {
+      bool isFull = true;
+      for (int c = 0; c < kGridSize; c++) {
+        final cell = cells[r][c];
+        final bool occupiedAfterDrop =
+            (cell.hasContent && !cell.isLocked) || virtualKeys.contains('$r,$c');
+        if (!occupiedAfterDrop || cell.isLocked) {
+          isFull = false;
+          break;
+        }
+      }
+      if (isFull) fullRows.add(r);
+    }
+
+    for (int c = 0; c < kGridSize; c++) {
+      bool isFull = true;
+      for (int r = 0; r < kGridSize; r++) {
+        final cell = cells[r][c];
+        final bool occupiedAfterDrop =
+            (cell.hasContent && !cell.isLocked) || virtualKeys.contains('$r,$c');
+        if (!occupiedAfterDrop || cell.isLocked) {
+          isFull = false;
+          break;
+        }
+      }
+      if (isFull) fullCols.add(c);
+    }
+
+    return LinePreviewResult(
+      isValid: true,
+      fullRows: fullRows,
+      fullCols: fullCols,
+    );
+  }
+
   /// Quét nổ đồng thời tất cả các hàng ngang và cột dọc đã đầy
   LineEvaluationResult evaluateLines() {
     final List<int> fullRows = [];
@@ -217,6 +281,12 @@ class GridEngine {
       if (cell.hazard == HazardType.ice && cell.iceLayer == 1) {
         cell.hazard = null;
         cell.iceLayer = 0;
+        GameEventBus.instance.fire(HazardUpdatedEvent(
+          hazard: HazardType.ice,
+          row: pt.r,
+          col: pt.c,
+          details: 0,
+        ));
       }
 
       // Gỡ Bom khi dòng có bom nổ
@@ -260,6 +330,15 @@ class GridEngine {
         if (cell.petColor != null) {
           freed.add(FreedPetInfo(row: r, col: c, color: cell.petColor!));
           cell.petColor = null;
+        }
+
+        if (cell.hazard == HazardType.ice) {
+          GameEventBus.instance.fire(HazardUpdatedEvent(
+            hazard: HazardType.ice,
+            row: r,
+            col: c,
+            details: 0,
+          ));
         }
 
         cell.hazard = null;
@@ -351,6 +430,15 @@ class GridEngine {
         final cell = cells[r][c];
         cell.isLocked = true;
         cell.petColor = null;
+        if (cell.hazard == HazardType.ice) {
+          GameEventBus.instance.fire(HazardUpdatedEvent(
+            hazard: HazardType.ice,
+            row: r,
+            col: c,
+            details: 0,
+          ));
+        }
+
         cell.hazard = null;
         affected.add(PointInt(r, c));
       }

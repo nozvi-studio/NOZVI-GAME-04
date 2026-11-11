@@ -149,6 +149,11 @@ class GameOverEvent extends GameEvent {
   GameOverEvent({required this.reason, required this.level, required this.score});
 }
 
+class TrayRefilledEvent extends GameEvent {
+  final int batchId;
+  TrayRefilledEvent({required this.batchId});
+}
+
 class TutorialStepEvent extends GameEvent {
   final int stepIndex;
   final String title;

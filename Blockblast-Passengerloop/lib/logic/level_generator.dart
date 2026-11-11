@@ -41,24 +41,43 @@ class LevelGenerator {
   }
 
   static GameLevelConfig _generate(int level) {
+    if (level == 0) {
+      return GameLevelConfig(
+        levelNumber: 0,
+        chapter: 1,
+        chapterName: 'Hướng Dẫn Nhập Môn (FTUE)',
+        availableColors: const [PetColor.red, PetColor.yellow, PetColor.blue],
+        buses: [
+          BusData(id: 'ftue_bus_0', color: PetColor.red, name: 'Corgi Bus', capacity: 8),
+          BusData(id: 'ftue_bus_1', color: PetColor.red, name: 'Corgi Bus', capacity: 8),
+          BusData(id: 'ftue_bus_2', color: PetColor.red, name: 'Corgi Bus', capacity: 5),
+          BusData(id: 'ftue_bus_3', color: PetColor.yellow, name: 'Cat Bus', capacity: 4),
+          BusData(id: 'ftue_bus_4', color: PetColor.blue, name: 'Duck Bus', capacity: 4),
+        ],
+        initialGrid: const [],
+        targetScore: 1500,
+        description: 'Làm quen cơ chế xếp khối 8x8, đón thú lên xe buýt và ghế chờ.',
+      );
+    }
+
     int chapter = 1;
-    String chapterName = 'Chương 1: Công Viên Corgi & Mèo';
+    String chapterName = 'Chương 1: Công Viên Nắng Ấm';
     List<PetColor> colors = [PetColor.red, PetColor.yellow];
     int busCount = 2 + (level / 10).floor();
     List<int> lockedDockSlots = [];
 
     if (level <= 30) {
       chapter = 1;
-      chapterName = 'Chương 1: Công Viên Corgi & Mèo (Đá Tảng)';
+      chapterName = 'Chương 1: Công Viên Nắng Ấm';
       colors = [PetColor.red, PetColor.yellow];
     } else if (level <= 80) {
       chapter = 2;
-      chapterName = 'Chương 2: Đầm Vịt Băng Giá & Bom Hẹn Giờ';
+      chapterName = 'Chương 2: Xứ Sở Băng Giá';
       colors = [PetColor.red, PetColor.yellow, PetColor.blue];
       busCount = 3 + ((level - 30) / 12).floor();
     } else if (level <= 130) {
       chapter = 3;
-      chapterName = 'Chương 3: Rừng Thỏ Dây Leo & Khóa Ghế Chờ';
+      chapterName = 'Chương 3: Rừng Dây Leo';
       colors = [PetColor.red, PetColor.yellow, PetColor.blue, PetColor.green];
       busCount = 4 + ((level - 80) / 12).floor();
       // Khóa 1 hoặc 2 ghế chờ ở các màn cao
@@ -70,12 +89,12 @@ class LevelGenerator {
       }
     } else if (level <= 170) {
       chapter = 4;
-      chapterName = 'Chương 4: Thung Lũng Cáo & Hố Đen Dịch Chuyển';
+      chapterName = 'Chương 4: Thành Phố Đồ Chơi';
       colors = [PetColor.red, PetColor.yellow, PetColor.blue, PetColor.green, PetColor.orange];
       busCount = 5 + ((level - 130) / 10).floor();
     } else {
       chapter = 5;
-      chapterName = 'Chương 5: Bàn Cờ Dị Hình & Đại Chiến Boss';
+      chapterName = 'Chương 5: Thủ Đô Di Chúc';
       colors = [PetColor.red, PetColor.yellow, PetColor.blue, PetColor.green, PetColor.orange];
       busCount = 6 + ((level - 170) / 8).floor();
       if (level >= 185) {
@@ -91,7 +110,7 @@ class LevelGenerator {
       buses.add(BusData(
         id: 'bus_${level}_$i',
         color: color,
-        name: '${color.animalName} Express',
+        name: '${color.displayName} Bus',
         capacity: capacity,
       ));
     }

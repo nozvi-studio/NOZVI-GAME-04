@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:block_odyssey_pet_express/models/enums.dart';
 import 'package:block_odyssey_pet_express/models/polyomino_shape.dart';
 import 'package:block_odyssey_pet_express/models/bus_data.dart';
+import 'package:block_odyssey_pet_express/core/action_queue.dart';
 import 'package:block_odyssey_pet_express/logic/grid_engine.dart';
 import 'package:block_odyssey_pet_express/logic/bus_station_manager.dart';
 import 'package:block_odyssey_pet_express/logic/smart_spawner.dart';
@@ -10,6 +11,9 @@ import 'package:block_odyssey_pet_express/logic/level_generator.dart';
 import 'package:block_odyssey_pet_express/logic/revive_controller.dart';
 import 'package:block_odyssey_pet_express/logic/win_streak_manager.dart';
 import 'package:block_odyssey_pet_express/logic/bus_rush_race_service.dart';
+import 'package:block_odyssey_pet_express/logic/commercial_game_controller.dart';
+import 'package:block_odyssey_pet_express/logic/player_economy_service.dart';
+import 'package:block_odyssey_pet_express/logic/daily_quest_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -362,6 +366,158 @@ void main() {
       expect(race.playerBuses, greaterThanOrEqualTo(15));
       expect(race.isPlayerWinner, isTrue);
       expect(race.getPlayerRank(), equals(1));
+    });
+
+    test('ActionQueue clears slot on placeBlock and calls refillTray when all 3 traySlots are null', () async {
+      final grid = GridEngine();
+      final station = BusStationManager();
+      station.initializeBuses([
+        BusData(id: 'b1', color: PetColor.red, name: 'Corgi Bus', capacity: 6),
+        BusData(id: 'b2', color: PetColor.yellow, name: 'Cat Bus', capacity: 6),
+      ]);
+      final spawner = SmartSpawner();
+      final queue = ActionQueue(
+        gridEngine: grid,
+        busStation: station,
+        smartSpawner: spawner,
+      );
+
+      // Fill traySlots with 3 deterministic 1x1 shapes
+      for (int i = 0; i < 3; i++) {
+        spawner.traySlots[i] = PolyominoShape(
+          id: 'dot_$i',
+          name: 'Dot1x1',
+          tiles: [const ShapeTile(r: 0, c: 0, petColor: PetColor.red)],
+          width: 1,
+          height: 1,
+        );
+      }
+
+      expect(spawner.isTrayEmpty, isFalse);
+      final initialBatch = spawner.batchId;
+
+      // Drop block 0 -> traySlots[0] becomes null, still not empty
+      await queue.executeBlockDrop(
+        shape: spawner.traySlots[0]!,
+        slotIndex: 0,
+        targetRow: 0,
+        targetCol: 0,
+        availableColors: [PetColor.red, PetColor.yellow],
+      );
+      expect(spawner.traySlots[0], isNull);
+      expect(spawner.traySlots.every((e) => e == null), isFalse);
+      expect(spawner.batchId, equals(initialBatch));
+
+      // Drop block 1 -> traySlots[1] becomes null, still not empty
+      await queue.executeBlockDrop(
+        shape: spawner.traySlots[1]!,
+        slotIndex: 1,
+        targetRow: 0,
+        targetCol: 2,
+        availableColors: [PetColor.red, PetColor.yellow],
+      );
+      expect(spawner.traySlots[1], isNull);
+      expect(spawner.batchId, equals(initialBatch));
+
+      // Drop block 2 -> all traySlots become null -> refillTray() triggers automatically!
+      await queue.executeBlockDrop(
+        shape: spawner.traySlots[2]!,
+        slotIndex: 2,
+        targetRow: 0,
+        targetCol: 4,
+        availableColors: [PetColor.red, PetColor.yellow],
+      );
+
+      expect(spawner.batchId, equals(initialBatch + 1));
+      expect(spawner.traySlots.every((e) => e != null), isTrue);
+      expect(spawner.traySlots.length, equals(3));
+    });
+  });
+
+  group('Commercial Production Systems Tests', () {
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+    });
+
+    test('GridEngine.previewLinesIfPlaced highlights rows and cols before drop', () {
+      final engine = GridEngine();
+      for (int c = 1; c < 8; c++) {
+        engine.cells[2][c].petColor = PetColor.red;
+      }
+      final dot = PolyominoShape(
+        id: 'hover_dot',
+        name: 'Dot1x1',
+        tiles: [const ShapeTile(r: 0, c: 0, petColor: PetColor.yellow)],
+        width: 1,
+        height: 1,
+      );
+
+      final preview = engine.previewLinesIfPlaced(dot, 2, 0);
+      expect(preview.isValid, isTrue);
+      expect(preview.fullRows, contains(2));
+      expect(engine.cells[2][0].petColor, isNull); // Original board untouched!
+    });
+
+    test('SmartSpawner.refillTrayGuaranteedPlayable fits even with 1 empty cell left', () {
+      final engine = GridEngine();
+      for (int r = 0; r < 8; r++) {
+        for (int c = 0; c < 8; c++) {
+          if (!(r == 7 && c == 7)) {
+            engine.cells[r][c].petColor = PetColor.red;
+          }
+        }
+      }
+
+      final spawner = SmartSpawner();
+      spawner.refillTrayGuaranteedPlayable(
+        gridEngine: engine,
+        availableColors: [PetColor.red, PetColor.yellow],
+        activeBus: BusData(id: 'b', color: PetColor.red, name: 'Corgi Bus', capacity: 4),
+        nextBus: null,
+      );
+
+      expect(engine.hasValidMoveForShapes(spawner.activeShapes), isTrue);
+    });
+
+    test('CommercialGameController coordinates placement and skipTutorial refill', () async {
+      final ctrl = CommercialGameController();
+      ctrl.startLevel(0);
+      expect(ctrl.isTutorialActive, isTrue);
+
+      ctrl.skipTutorial();
+      expect(ctrl.isTutorialActive, isFalse);
+      expect(ctrl.smartSpawner.traySlots.every((e) => e != null), isTrue);
+    });
+
+    test('PlayerEconomyService handles Skins, Upgrades, and Milestone Chests', () async {
+      final economy = PlayerEconomyService.instance;
+      await economy.init(forceReload: true);
+
+      expect(economy.coins, equals(350));
+      expect(economy.activeSkin, equals(GameSkinTheme.kawaiiPets));
+
+      final bought = await economy.buySkinWithCoins(GameSkinTheme.jellyCandy);
+      expect(bought, isTrue);
+      expect(economy.activeSkin, equals(GameSkinTheme.jellyCandy));
+      expect(economy.coins, equals(50));
+
+      await economy.recordLevelVictory(10, 3, 200);
+      final reward = await economy.claimMilestoneChest(10);
+      expect(reward, isNotNull);
+      expect(economy.isMilestoneClaimed(10), isTrue);
+    });
+
+    test('DailyQuestService progresses and claims daily quest rewards', () async {
+      final questService = DailyQuestService.instance;
+      await questService.init();
+
+      await questService.incrementQuest('combo_x4', 1);
+      final comboQuest = questService.quests.firstWhere((q) => q.id == 'combo_x4');
+      expect(comboQuest.isCompleted, isTrue);
+
+      final claimed = await questService.claimQuest('combo_x4');
+      expect(claimed, isTrue);
+      expect(comboQuest.isClaimed, isTrue);
     });
   });
 }

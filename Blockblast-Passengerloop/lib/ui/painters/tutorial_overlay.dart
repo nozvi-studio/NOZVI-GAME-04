@@ -33,8 +33,11 @@ class TutorialOverlayPainter extends CustomPainter {
 
   /// 1. Làm mờ toàn màn hình và chiếu sáng vùng tiêu điểm
   void _drawDimmedBackdropWithHoles(Canvas canvas, Size size) {
-    final bgPaint = Paint()..color = Colors.black.withValues(alpha: 0.65);
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
+    final fullRect = Rect.fromLTWH(0, 0, size.width, size.height);
+    canvas.saveLayer(fullRect, Paint());
+
+    final bgPaint = Paint()..color = Colors.black.withValues(alpha: 0.58);
+    canvas.drawRect(fullRect, bgPaint);
 
     // Chiếu sáng hàng mục tiêu trên bàn cờ
     if (highlightRow != null && highlightRow! >= 0 && highlightRow! < 8) {
@@ -46,7 +49,7 @@ class TutorialOverlayPainter extends CustomPainter {
         scaler.cellSize,
       );
 
-      // Xóa vùng mờ (chiếu sáng)
+      // Đục lỗ trong suốt trên lớp mờ để làm nổi bật hàng mục tiêu
       canvas.drawRRect(
         RRect.fromRectAndRadius(rowRect, const Radius.circular(6)),
         Paint()..blendMode = BlendMode.clear,
@@ -54,7 +57,7 @@ class TutorialOverlayPainter extends CustomPainter {
 
       // Viền vàng nhấp nháy quanh hàng đang chiếu sáng
       final glowPaint = Paint()
-        ..color = const Color(0xFFFFD54F)
+        ..color = const Color(0xFFFFD84D)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2.5;
       canvas.drawRRect(RRect.fromRectAndRadius(rowRect, const Radius.circular(6)), glowPaint);
@@ -69,11 +72,13 @@ class TutorialOverlayPainter extends CustomPainter {
       );
 
       final slotGlow = Paint()
-        ..color = const Color(0xFF64B5F6)
+        ..color = const Color(0xFF4FC3F7)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.0;
+        ..strokeWidth = 2.5;
       canvas.drawRRect(RRect.fromRectAndRadius(slotRect, const Radius.circular(10)), slotGlow);
     }
+
+    canvas.restore();
   }
 
   /// 2. Bàn tay trắng chỉ đường (Gloved Hand Pointer) trượt từ khay lên bàn cờ

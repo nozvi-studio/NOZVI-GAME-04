@@ -106,7 +106,7 @@ class ReviveController {
 
     // 3. Biến 3 khối gạch ở khay Next thành 3 khối đơn 1x1 trùng màu xe buýt
     for (int i = 0; i < 3; i++) {
-      smartSpawner.nextShapes[i] = PolyominoShape(
+      smartSpawner.traySlots[i] = PolyominoShape(
         id: 'revive_dot_${DateTime.now().millisecondsSinceEpoch}_$i',
         name: 'Revive 1x1',
         width: 1,
@@ -120,6 +120,7 @@ class ReviveController {
         ],
       );
     }
+    smartSpawner.notifyTrayChanged();
 
     return ReviveExecutionResult(
       success: true,

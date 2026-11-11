@@ -125,7 +125,7 @@ class _ReviveModalState extends State<ReviveModal> with SingleTickerProviderStat
               ),
               const SizedBox(height: 8),
               Text(
-                isDock ? 'TRỰC THĂNG GIẢI CỨU' : 'ĐỘI CỨU HỘ KHẨN CẤP',
+                isDock ? 'TRỰC THĂNG GIẢI CỨU' : 'ĐỘI CỨU HỘ BÀN CỜ',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 18,

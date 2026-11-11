@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/enums.dart';
 import '../../models/bus_data.dart';
 import '../../core/pentatonic_audio_synth.dart';
+import '../../logic/player_economy_service.dart';
 
 /// Dịch vụ lưu trữ và tính toán Khu Nghỉ Dưỡng Thú Cưng (Pet Sanctuary)
 class PetSanctuaryService extends ChangeNotifier {
@@ -19,13 +20,12 @@ class PetSanctuaryService extends ChangeNotifier {
     for (final color in PetColor.values) color: 0,
   };
 
-  int _coins = 100; // Khởi đầu tặng 100 xu để người chơi trải nghiệm mở zone đầu tiên
   final Set<String> _unlockedZones = {'corgi_beach'};
   DateTime _lastHarvestTime = DateTime.now();
   bool _isLoaded = false;
 
   Map<PetColor, int> get rescuedCounts => Map.unmodifiable(_rescuedCounts);
-  int get coins => _coins;
+  int get coins => PlayerEconomyService.instance.coins;
   Set<String> get unlockedZones => Set.unmodifiable(_unlockedZones);
   bool get isLoaded => _isLoaded;
 
@@ -47,7 +47,6 @@ class PetSanctuaryService extends ChangeNotifier {
       for (final color in PetColor.values) {
         _rescuedCounts[color] = prefs.getInt('$_prefRescuedPrefix${color.name}') ?? 0;
       }
-      _coins = prefs.getInt(_prefCoinsKey) ?? 100;
       final zones = prefs.getStringList(_prefUnlockedZonesKey);
       if (zones != null) {
         _unlockedZones.addAll(zones);
@@ -65,13 +64,11 @@ class PetSanctuaryService extends ChangeNotifier {
 
   /// Ghi nhận mỗi khi một chuyến xe buýt lăn bánh trong trận đấu
   Future<void> recordBusDeparted(BusData bus) async {
-    // Cộng các bé thú cưng theo màu vào hồ sơ
     final petColor = bus.color;
     final passengers = math.max(1, bus.currentPassengers);
     _rescuedCounts[petColor] = (_rescuedCounts[petColor] ?? 0) + passengers;
 
-    // Tặng 25 xu thưởng mỗi chuyến xe hoàn thành
-    _coins += 25;
+    await PlayerEconomyService.instance.addRewards(coinsDelta: 25);
     notifyListeners();
     await _save();
   }
@@ -80,7 +77,7 @@ class PetSanctuaryService extends ChangeNotifier {
   Future<int> harvestIdleCoins() async {
     final reward = pendingIdleCoins;
     if (reward <= 0) return 0;
-    _coins += reward;
+    await PlayerEconomyService.instance.addRewards(coinsDelta: reward);
     _lastHarvestTime = DateTime.now();
     notifyListeners();
     await _save();
@@ -89,8 +86,9 @@ class PetSanctuaryService extends ChangeNotifier {
 
   /// Mở khóa khu vực trên đảo bằng xu
   Future<bool> unlockZone(String zoneId, int cost) async {
-    if (_coins < cost || _unlockedZones.contains(zoneId)) return false;
-    _coins -= cost;
+    final currentCoins = PlayerEconomyService.instance.coins;
+    if (currentCoins < cost || _unlockedZones.contains(zoneId)) return false;
+    await PlayerEconomyService.instance.addRewards(coinsDelta: -cost);
     _unlockedZones.add(zoneId);
     notifyListeners();
     await _save();
@@ -103,7 +101,7 @@ class PetSanctuaryService extends ChangeNotifier {
       for (final color in PetColor.values) {
         await prefs.setInt('$_prefRescuedPrefix${color.name}', _rescuedCounts[color] ?? 0);
       }
-      await prefs.setInt(_prefCoinsKey, _coins);
+      await prefs.setInt(_prefCoinsKey, PlayerEconomyService.instance.coins);
       await prefs.setStringList(_prefUnlockedZonesKey, _unlockedZones.toList());
       await prefs.setInt(_prefLastHarvestKey, _lastHarvestTime.millisecondsSinceEpoch);
     } catch (e) {
@@ -314,33 +312,43 @@ class _PetSanctuaryScreenState extends State<PetSanctuaryScreen>
                           ],
                         ),
                       ),
-                      const Spacer(),
+                      const SizedBox(width: 8),
                       // Nút Thu hoạch Xu thụ động (Idle Coins)
-                      ElevatedButton.icon(
-                        onPressed: pendingCoins > 0
-                            ? () async {
-                                final gained = await service.harvestIdleCoins();
-                                if (context.mounted && gained > 0) {
-                                  PentatonicAudioSynth.instance.playFanfare();
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('🎉 Đã thu hoạch +$gained Xu thụ động từ đảo!'),
-                                      backgroundColor: const Color(0xFF2E7D32),
-                                      duration: const Duration(seconds: 2),
-                                    ),
-                                  );
-                                }
-                              }
-                            : null,
-                        icon: const Icon(Icons.stars, color: Colors.amber, size: 18),
-                        label: Text(
-                          pendingCoins > 0 ? 'Thu Hoạch +$pendingCoins' : 'Chờ tích lũy',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF00897B),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      Flexible(
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: ElevatedButton.icon(
+                            onPressed: pendingCoins > 0
+                                ? () async {
+                                    final gained = await service.harvestIdleCoins();
+                                    if (context.mounted && gained > 0) {
+                                      PentatonicAudioSynth.instance.playFanfare();
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('🎉 Đã thu hoạch +$gained Xu thụ động từ đảo!'),
+                                          backgroundColor: const Color(0xFF2E7D32),
+                                          duration: const Duration(seconds: 2),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                : null,
+                            icon: const Icon(Icons.stars, color: Colors.amber, size: 16),
+                            label: Text(
+                              pendingCoins > 0
+                                  ? 'Thu hoạch Xu thụ động (+$pendingCoins)'
+                                  : 'Thu hoạch Xu thụ động',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF00897B),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            ),
+                          ),
                         ),
                       ),
                     ],

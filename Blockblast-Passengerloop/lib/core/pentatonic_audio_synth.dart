@@ -8,8 +8,19 @@ class PentatonicAudioSynth {
   static final PentatonicAudioSynth _instance = PentatonicAudioSynth._internal();
   static PentatonicAudioSynth get instance => _instance;
 
-  final AudioPlayer _player = AudioPlayer();
-  bool isMuted = false;
+  AudioPlayer? _player;
+  AudioPlayer? _bgmPlayer;
+  bool sfxEnabled = true;
+  bool bgmEnabled = true;
+  bool _isBgmPlaying = false;
+
+  bool get isMuted => !sfxEnabled;
+  set isMuted(bool value) {
+    sfxEnabled = !value;
+    if (value) {
+      stopBgm();
+    }
+  }
 
   static const int kSampleRate = 22050;
 
@@ -27,19 +38,71 @@ class PentatonicAudioSynth {
     1046.50 // C6
   ];
 
-  PentatonicAudioSynth._internal() {
-    _player.setAudioContext(AudioContext(
-      android: const AudioContextAndroid(
-        isSpeakerphoneOn: true,
-        stayAwake: false,
-        contentType: AndroidContentType.sonification,
-        usageType: AndroidUsageType.game,
-        audioFocus: AndroidAudioFocus.none,
-      ),
-      iOS: AudioContextIOS(
-        category: AVAudioSessionCategory.ambient,
-      ),
-    ));
+  PentatonicAudioSynth._internal();
+
+  AudioPlayer _getOrCreateSfxPlayer() {
+    if (_player == null) {
+      _player = AudioPlayer();
+      _player!.setAudioContext(AudioContext(
+        android: const AudioContextAndroid(
+          isSpeakerphoneOn: true,
+          stayAwake: false,
+          contentType: AndroidContentType.sonification,
+          usageType: AndroidUsageType.game,
+          audioFocus: AndroidAudioFocus.none,
+        ),
+        iOS: AudioContextIOS(
+          category: AVAudioSessionCategory.ambient,
+        ),
+      ));
+    }
+    return _player!;
+  }
+
+  AudioPlayer _getOrCreateBgmPlayer() {
+    if (_bgmPlayer == null) {
+      _bgmPlayer = AudioPlayer();
+      _bgmPlayer!.setReleaseMode(ReleaseMode.loop);
+    }
+    return _bgmPlayer!;
+  }
+
+  void setSfxEnabled(bool enabled) {
+    sfxEnabled = enabled;
+  }
+
+  Future<void> setBgmEnabled(bool enabled) async {
+    bgmEnabled = enabled;
+    if (enabled) {
+      await startBgm();
+    } else {
+      await stopBgm();
+    }
+  }
+
+  Future<void> startBgm() async {
+    if (!bgmEnabled || _isBgmPlaying) return;
+    try {
+      _isBgmPlaying = true;
+      final player = _getOrCreateBgmPlayer();
+      final bytes = _generateAmbientBgmWav();
+      await player.setVolume(0.25);
+      await player.play(BytesSource(bytes));
+    } catch (_) {
+      _isBgmPlaying = false;
+    }
+  }
+
+  Future<void> stopBgm() async {
+    _isBgmPlaying = false;
+    try {
+      final player = _bgmPlayer;
+      _bgmPlayer = null;
+      if (player != null) {
+        await player.stop();
+        await player.dispose();
+      }
+    } catch (_) {}
   }
 
   /// Tiếng "Bộp" đàn hồi khi đặt khối gạch
@@ -108,8 +171,9 @@ class PentatonicAudioSynth {
 
   Future<void> _playBytes(Uint8List bytes) async {
     try {
-      await _player.stop();
-      await _player.play(BytesSource(bytes));
+      final player = _getOrCreateSfxPlayer();
+      await player.stop();
+      await player.play(BytesSource(bytes));
     } catch (_) {
       // Bỏ qua lỗi phát âm thanh trên một số thiết bị không có channel
     }
@@ -235,6 +299,26 @@ class PentatonicAudioSynth {
 
       final wave = math.sin(2 * math.pi * freq * t);
       pcmSamples[i] = (wave * envelope * 22000).clamp(-32767, 32767).toInt();
+    }
+
+    return _createWavContainer(pcmSamples);
+  }
+
+  /// Tạo nhạc nền Ngũ cung nhẹ nhàng lặp vòng (4 giây loop êm ái)
+  Uint8List _generateAmbientBgmWav() {
+    const int numSamples = kSampleRate * 4;
+    final Int16List pcmSamples = Int16List(numSamples);
+    const notes = [261.63, 329.63, 392.00, 523.25, 440.00, 392.00, 329.63, 293.66];
+    final int samplesPerNote = numSamples ~/ notes.length;
+
+    for (int i = 0; i < numSamples; i++) {
+      final int noteIdx = (i ~/ samplesPerNote).clamp(0, notes.length - 1);
+      final double localT = (i % samplesPerNote) / kSampleRate;
+      final double freq = notes[noteIdx];
+      final double env = math.exp(-3.2 * localT) * (1.0 - math.exp(-40.0 * localT));
+      final double wave = math.sin(2 * math.pi * freq * localT) * 0.7 +
+          math.sin(2 * math.pi * (freq * 0.5) * localT) * 0.3;
+      pcmSamples[i] = (wave * env * 9000).clamp(-32767, 32767).toInt();
     }
 
     return _createWavContainer(pcmSamples);

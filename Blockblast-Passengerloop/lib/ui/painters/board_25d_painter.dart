@@ -4,17 +4,77 @@ import '../../models/enums.dart';
 import '../../models/grid_cell_data.dart';
 import '../../models/polyomino_shape.dart';
 import '../../core/viewport_scaler.dart';
+import '../../logic/grid_engine.dart';
+import 'kawaii_25d_renderer.dart';
 
 class ComboEffectData {
   final String text;
   final Offset position;
   final double progress; // 0.0 -> 1.0
+  final Color color;
+  final double fontSize;
 
   const ComboEffectData({
     required this.text,
     required this.position,
     required this.progress,
+    this.color = const Color(0xFFFFD84D),
+    this.fontSize = 26.0,
   });
+}
+
+/// Hàm vẽ khối gạch thú cưng Toy 2.5D chuẩn 6 lớp (ủy quyền cho Kawaii25DRenderer)
+void draw25DPetBlock(Canvas canvas, Rect cellRect, PetColor color) {
+  Kawaii25DRenderer.drawKawaiiPetBlock(canvas, cellRect, color);
+}
+
+/// CustomPainter vẽ một khối gạch Polyomino bằng Kawaii25DRenderer
+/// Dùng chung cho Khay Next (tỉ lệ 0.62x) và khối đang kéo trên màn hình (tỉ lệ 1.0x)
+class PolyominoShape25DPainter extends CustomPainter {
+  final PolyominoShape shape;
+  final double cellSize;
+  final GameSkinTheme skin;
+
+  const PolyominoShape25DPainter({
+    required this.shape,
+    required this.cellSize,
+    this.skin = GameSkinTheme.kawaiiPets,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double scaleX = size.width / (shape.width * cellSize);
+    final double scaleY = size.height / (shape.height * cellSize);
+    final double scale = math.min(scaleX, scaleY);
+
+    canvas.save();
+    canvas.scale(scale, scale);
+
+    for (final tile in shape.tiles) {
+      final cellRect = Rect.fromLTWH(
+        tile.c * cellSize + 1.5,
+        tile.r * cellSize + 1.5,
+        cellSize - 3.0,
+        cellSize - 3.0,
+      );
+      Kawaii25DRenderer.drawBlock(
+        canvas,
+        cellRect,
+        tile.petColor,
+        skin: skin,
+        animateIdle: false,
+      );
+    }
+
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant PolyominoShape25DPainter oldDelegate) {
+    return oldDelegate.shape != shape ||
+        oldDelegate.cellSize != cellSize ||
+        oldDelegate.skin != skin;
+  }
 }
 
 class Board25DPainter extends CustomPainter {
@@ -23,9 +83,12 @@ class Board25DPainter extends CustomPainter {
   final PolyominoShape? draggingShape;
   final PointInt? ghostCell;
   final bool isValidGhost;
+  final LinePreviewResult linePreview;
   final bool isHammerActive;
   final PointInt? hammerHoverCell;
   final List<ComboEffectData> comboEffects;
+  final GameSkinTheme skin;
+  final double Function()? getElapsedSec;
 
   Board25DPainter({
     required this.scaler,
@@ -33,61 +96,70 @@ class Board25DPainter extends CustomPainter {
     this.draggingShape,
     this.ghostCell,
     this.isValidGhost = false,
+    this.linePreview = const LinePreviewResult(),
     this.isHammerActive = false,
     this.hammerHoverCell,
     this.comboEffects = const [],
+    this.skin = GameSkinTheme.kawaiiPets,
+    this.getElapsedSec,
+    super.repaint,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
+    final double elapsedSec = getElapsedSec != null ? getElapsedSec!() : 0.0;
+
     _drawWoodenTray(canvas);
-    _drawGridCells(canvas);
+    _drawLinePreviewUnderlayGlow(canvas, elapsedSec);
     _drawGhostPreview(canvas);
+    _drawGridCells(canvas, elapsedSec);
+    _drawLinePreviewOverlayRim(canvas, elapsedSec);
     _drawHammerTargetReticle(canvas);
     _drawComboPopups(canvas);
   }
 
-  /// 1. Vẽ khay gỗ 2.5D có thành dày và lòng chảo lõm
+  /// 1. Vẽ khay gỗ 8x8 Toy 2.5D chuẩn bảng màu Hex (#6D4226, #9E633A, #4A2E1B, #3B2314)
   void _drawWoodenTray(Canvas canvas) {
     final boardRect = scaler.boardRect;
 
-    // Đổ bóng mềm bên dưới khay gỗ
     final shadowPaint = Paint()
       ..color = Colors.black.withValues(alpha: 0.35)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12);
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
     canvas.drawRRect(
-      RRect.fromRectAndRadius(boardRect.shift(const Offset(0, 8)), const Radius.circular(16)),
+      RRect.fromRectAndRadius(boardRect.shift(const Offset(0, 9)), const Radius.circular(18)),
       shadowPaint,
     );
 
-    // Thành gỗ bên ngoài (màu nâu gỗ ấm 2.5D)
-    final outerWoodPaint = Paint()..color = const Color(0xFF8D5B28);
+    // Viền ngoài 3D #6D4226
     canvas.drawRRect(
-      RRect.fromRectAndRadius(boardRect, const Radius.circular(16)),
-      outerWoodPaint,
+      RRect.fromRectAndRadius(boardRect.shift(const Offset(0, 6)), const Radius.circular(18)),
+      Paint()..color = const Color(0xFF6D4226),
     );
 
-    // Thành dưới dày 6px màu gỗ sẫm tạo độ dày 2.5D
-    final bottomRimPaint = Paint()..color = const Color(0xFF5D3A1A);
+    // Mặt thành gỗ #9E633A
     canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(boardRect.left, boardRect.bottom - 8, boardRect.width, 8),
-        const Radius.circular(8),
-      ),
-      bottomRimPaint,
+      RRect.fromRectAndRadius(boardRect, const Radius.circular(18)),
+      Paint()..color = const Color(0xFF9E633A),
     );
 
-    // Mặt lòng chảo bên trong (nền bàn cờ lõm)
-    final innerPaint = Paint()..color = const Color(0xFF3E2713);
     canvas.drawRRect(
-      RRect.fromRectAndRadius(scaler.innerGridRect, const Radius.circular(10)),
-      innerPaint,
+      RRect.fromRectAndRadius(boardRect.deflate(1.0), const Radius.circular(17)),
+      Paint()
+        ..color = const Color(0xFFC48354).withValues(alpha: 0.55)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5,
     );
 
-    // Vẽ lưới ô lõm 8x8
-    final cellBgPaint = Paint()..color = const Color(0xFF2E1C0C);
-    final borderPaint = Paint()
-      ..color = const Color(0xFF4A331E)
+    // Lòng bàn cờ lõm #4A2E1B
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(scaler.innerGridRect.inflate(2.0), const Radius.circular(12)),
+      Paint()..color = const Color(0xFF4A2E1B),
+    );
+
+    // Từng ô trống trên lưới 8x8 vẽ RRect bo góc 6px màu #3B2314 có viền sáng nhẹ
+    final cellBgPaint = Paint()..color = const Color(0xFF3B2314);
+    final cellRimPaint = Paint()
+      ..color = const Color(0xFF6B442A).withValues(alpha: 0.65)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0;
 
@@ -99,14 +171,75 @@ class Board25DPainter extends CustomPainter {
           scaler.cellSize - 3.0,
           scaler.cellSize - 3.0,
         );
-        canvas.drawRRect(RRect.fromRectAndRadius(cellRect, const Radius.circular(6)), cellBgPaint);
-        canvas.drawRRect(RRect.fromRectAndRadius(cellRect, const Radius.circular(6)), borderPaint);
+        final slotRRect = RRect.fromRectAndRadius(cellRect, const Radius.circular(6));
+        canvas.drawRRect(slotRRect, cellBgPaint);
+        canvas.drawRRect(slotRRect, cellRimPaint);
       }
     }
   }
 
-  /// 2. Vẽ các khối gạch 2.5D với độ dày 6px và khuôn mặt thú cưng
-  void _drawGridCells(Canvas canvas) {
+  /// Highlight nền phát sáng rực rỡ các hàng/cột sắp nổ (từ previewLinesIfPlaced)
+  void _drawLinePreviewUnderlayGlow(Canvas canvas, double elapsedSec) {
+    if (!linePreview.hasLinesToClear) return;
+
+    final double pulse = 0.55 + 0.30 * math.sin(elapsedSec * 9.0);
+    final glowPaint = Paint()
+      ..color = const Color(0xFFFFEE58).withValues(alpha: 0.35 * pulse)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+
+    for (final r in linePreview.fullRows) {
+      final rowRect = Rect.fromLTWH(
+        scaler.innerGridRect.left,
+        scaler.innerGridRect.top + r * scaler.cellSize,
+        scaler.innerGridRect.width,
+        scaler.cellSize,
+      );
+      canvas.drawRRect(RRect.fromRectAndRadius(rowRect, const Radius.circular(8)), glowPaint);
+    }
+
+    for (final c in linePreview.fullCols) {
+      final colRect = Rect.fromLTWH(
+        scaler.innerGridRect.left + c * scaler.cellSize,
+        scaler.innerGridRect.top,
+        scaler.cellSize,
+        scaler.innerGridRect.height,
+      );
+      canvas.drawRRect(RRect.fromRectAndRadius(colRect, const Radius.circular(8)), glowPaint);
+    }
+  }
+
+  void _drawLinePreviewOverlayRim(Canvas canvas, double elapsedSec) {
+    if (!linePreview.hasLinesToClear) return;
+
+    final double pulse = 0.65 + 0.35 * math.sin(elapsedSec * 10.0);
+    final rimPaint = Paint()
+      ..color = const Color(0xFFFFEE58).withValues(alpha: pulse)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.0;
+
+    for (final r in linePreview.fullRows) {
+      final rowRect = Rect.fromLTWH(
+        scaler.innerGridRect.left,
+        scaler.innerGridRect.top + r * scaler.cellSize,
+        scaler.innerGridRect.width,
+        scaler.cellSize,
+      );
+      canvas.drawRRect(RRect.fromRectAndRadius(rowRect, const Radius.circular(8)), rimPaint);
+    }
+
+    for (final c in linePreview.fullCols) {
+      final colRect = Rect.fromLTWH(
+        scaler.innerGridRect.left + c * scaler.cellSize,
+        scaler.innerGridRect.top,
+        scaler.cellSize,
+        scaler.innerGridRect.height,
+      );
+      canvas.drawRRect(RRect.fromRectAndRadius(colRect, const Radius.circular(8)), rimPaint);
+    }
+  }
+
+  /// 2. Vẽ các khối gạch 2.5D bằng Kawaii25DRenderer với nhịp thở & chớp mắt 60fps
+  void _drawGridCells(Canvas canvas, double elapsedSec) {
     for (int r = 0; r < 8; r++) {
       for (int c = 0; c < 8; c++) {
         final cell = cells[r][c];
@@ -115,10 +248,9 @@ class Board25DPainter extends CustomPainter {
         } else if (cell.hazard == HazardType.stone) {
           _drawStoneCell(canvas, r, c);
         } else if (cell.petColor != null) {
-          _drawPetTile(canvas, r, c, cell.petColor!, animScale: cell.animScale);
+          _drawPetTile(canvas, r, c, cell.petColor!, animScale: cell.animScale, elapsedSec: elapsedSec);
         }
 
-        // Vẽ lớp phủ Hazard nếu có
         if (cell.hazard == HazardType.ice) {
           _drawIceOverlay(canvas, r, c, cell.iceLayer);
         } else if (cell.hazard == HazardType.bomb) {
@@ -130,196 +262,53 @@ class Board25DPainter extends CustomPainter {
     }
   }
 
-  /// Vẽ khối gạch thú cưng 2.5D: Mặt trên bo góc + Đế dày 6px tối màu
-  void _drawPetTile(Canvas canvas, int r, int c, PetColor color, {double animScale = 1.0}) {
+  void _drawPetTile(
+    Canvas canvas,
+    int r,
+    int c,
+    PetColor color, {
+    double animScale = 1.0,
+    double elapsedSec = 0.0,
+  }) {
     final cellCenter = scaler.getCellCenter(r, c);
-    final size = (scaler.cellSize - 4.0) * animScale;
-    final half = size / 2;
-
-    canvas.save();
-    canvas.translate(cellCenter.dx, cellCenter.dy);
-
-    final rect = Rect.fromCenter(center: Offset.zero, width: size, height: size);
-    final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(8));
-
-    // 1. Đế dày 6px màu sẫm (3D Thickness)
-    final baseRect = rect.shift(const Offset(0, 5));
-    final baseRRect = RRect.fromRectAndRadius(baseRect, const Radius.circular(8));
-    final basePaint = Paint()..color = color.darkColor;
-    canvas.drawRRect(baseRRect, basePaint);
-
-    // 2. Mặt trên bo góc tròn
-    final topPaint = Paint()..color = color.primaryColor;
-    canvas.drawRRect(rrect, topPaint);
-
-    // 3. Viền sáng nhẹ trên mép trên cùng
-    final highlightPaint = Paint()
-      ..color = color.lightColor.withValues(alpha: 0.6)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-    canvas.drawRRect(rrect, highlightPaint);
-
-    // 4. Vẽ khuôn mặt thú cưng chi tiết
-    _drawPetFace(canvas, color, half);
-
-    canvas.restore();
+    final size = (scaler.cellSize - 3.0) * animScale;
+    final cellRect = Rect.fromCenter(center: cellCenter, width: size, height: size);
+    Kawaii25DRenderer.drawBlock(
+      canvas,
+      cellRect,
+      color,
+      skin: skin,
+      elapsedSec: elapsedSec,
+      seed: r * 8 + c,
+    );
   }
 
-  /// Vẽ khuôn mặt thú cưng vector chi tiết
-  void _drawPetFace(Canvas canvas, PetColor color, double half) {
-    final eyePaint = Paint()..color = const Color(0xFF212121);
-    final eyeGlintPaint = Paint()..color = Colors.white;
-
-    switch (color) {
-      case PetColor.red:
-        // Corgi Đỏ: Vệt trắng giữa mũi, tai hồng, mũi đen, mắt to tròn
-        final snoutPaint = Paint()..color = Colors.white;
-        canvas.drawOval(
-          Rect.fromCenter(center: const Offset(0, 3), width: half * 0.9, height: half * 0.65),
-          snoutPaint,
-        );
-        // Mắt
-        canvas.drawCircle(Offset(-half * 0.45, -half * 0.2), 2.5, eyePaint);
-        canvas.drawCircle(Offset(-half * 0.45 - 0.7, -half * 0.2 - 0.7), 1.0, eyeGlintPaint);
-        canvas.drawCircle(Offset(half * 0.45, -half * 0.2), 2.5, eyePaint);
-        canvas.drawCircle(Offset(half * 0.45 - 0.7, -half * 0.2 - 0.7), 1.0, eyeGlintPaint);
-        // Mũi đen
-        canvas.drawOval(Rect.fromCenter(center: const Offset(0, 1), width: 4.5, height: 3.5), eyePaint);
-        // Tai Corgi nhô nhẹ
-        final earPaint = Paint()..color = const Color(0xFFFF8A80);
-        canvas.drawCircle(Offset(-half * 0.7, -half * 0.7), 3.0, earPaint);
-        canvas.drawCircle(Offset(half * 0.7, -half * 0.7), 3.0, earPaint);
-        break;
-
-      case PetColor.yellow:
-        // Mèo Vàng: Tai nhọn tam giác, râu mèo, mắt mèo tinh nghịch
-        // Tai
-        final earPath = Path();
-        earPath.moveTo(-half * 0.8, -half * 0.4);
-        earPath.lineTo(-half * 0.5, -half * 0.9);
-        earPath.lineTo(-half * 0.2, -half * 0.5);
-        earPath.close();
-        canvas.drawPath(earPath, Paint()..color = const Color(0xFFE65100));
-
-        final earPathR = Path();
-        earPathR.moveTo(half * 0.8, -half * 0.4);
-        earPathR.lineTo(half * 0.5, -half * 0.9);
-        earPathR.lineTo(half * 0.2, -half * 0.5);
-        earPathR.close();
-        canvas.drawPath(earPathR, Paint()..color = const Color(0xFFE65100));
-
-        // Mắt
-        canvas.drawCircle(Offset(-half * 0.4, -half * 0.1), 2.4, eyePaint);
-        canvas.drawCircle(Offset(half * 0.4, -half * 0.1), 2.4, eyePaint);
-        // Mũi hồng
-        canvas.drawCircle(const Offset(0, 3), 2.0, Paint()..color = const Color(0xFFFF80AB));
-        // Râu mèo
-        final whiskerPaint = Paint()
-          ..color = const Color(0xFF5D4037)
-          ..strokeWidth = 1.0;
-        canvas.drawLine(Offset(-half * 0.3, 3), Offset(-half * 0.85, 2), whiskerPaint);
-        canvas.drawLine(Offset(-half * 0.3, 5), Offset(-half * 0.85, 7), whiskerPaint);
-        canvas.drawLine(Offset(half * 0.3, 3), Offset(half * 0.85, 2), whiskerPaint);
-        canvas.drawLine(Offset(half * 0.3, 5), Offset(half * 0.85, 7), whiskerPaint);
-        break;
-
-      case PetColor.blue:
-        // Vịt Xanh Dương: Mỏ vịt cam tròn to bè, mắt tròn long lanh
-        canvas.drawCircle(Offset(-half * 0.35, -half * 0.2), 2.6, eyePaint);
-        canvas.drawCircle(Offset(-half * 0.35 - 0.8, -half * 0.2 - 0.8), 1.0, eyeGlintPaint);
-        canvas.drawCircle(Offset(half * 0.35, -half * 0.2), 2.6, eyePaint);
-        canvas.drawCircle(Offset(half * 0.35 - 0.8, -half * 0.2 - 0.8), 1.0, eyeGlintPaint);
-        // Mỏ cam tròn
-        final beakPaint = Paint()..color = const Color(0xFFFF9800);
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(
-            Rect.fromCenter(center: const Offset(0, 4), width: half * 0.9, height: half * 0.45),
-            const Radius.circular(6),
-          ),
-          beakPaint,
-        );
-        break;
-
-      case PetColor.green:
-        // Thỏ Xanh Lá: Hai tai dài dựng đứng, má hồng, răng thỏ
-        final earPaint = Paint()..color = const Color(0xFFA5D6A7);
-        final innerEar = Paint()..color = const Color(0xFFFFCDD2);
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(Rect.fromLTWH(-half * 0.7, -half * 0.95, 5, 10), const Radius.circular(3)),
-          earPaint,
-        );
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(Rect.fromLTWH(-half * 0.7 + 1, -half * 0.95 + 1, 3, 8), const Radius.circular(2)),
-          innerEar,
-        );
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(Rect.fromLTWH(half * 0.7 - 5, -half * 0.95, 5, 10), const Radius.circular(3)),
-          earPaint,
-        );
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(Rect.fromLTWH(half * 0.7 - 4, -half * 0.95 + 1, 3, 8), const Radius.circular(2)),
-          innerEar,
-        );
-        // Mắt & Má hồng
-        canvas.drawCircle(Offset(-half * 0.38, -half * 0.1), 2.2, eyePaint);
-        canvas.drawCircle(Offset(half * 0.38, -half * 0.1), 2.2, eyePaint);
-        final cheekPaint = Paint()..color = const Color(0xFFFF8A80).withValues(alpha: 0.5);
-        canvas.drawCircle(Offset(-half * 0.6, 3), 3.0, cheekPaint);
-        canvas.drawCircle(Offset(half * 0.6, 3), 3.0, cheekPaint);
-        // Mũi & răng
-        canvas.drawCircle(const Offset(0, 1), 1.8, Paint()..color = const Color(0xFFE91E63));
-        canvas.drawRect(const Rect.fromLTWH(-1.5, 3.5, 3, 3), Paint()..color = Colors.white);
-        break;
-
-      case PetColor.orange:
-        // Cáo Cam: Má trắng nhọn, đầu tai đen, mắt xếch thông minh
-        final cheekPaint = Paint()..color = Colors.white;
-        final cheekPath = Path();
-        cheekPath.moveTo(-half * 0.8, 3);
-        cheekPath.lineTo(0, 7);
-        cheekPath.lineTo(half * 0.8, 3);
-        cheekPath.lineTo(0, -2);
-        cheekPath.close();
-        canvas.drawPath(cheekPath, cheekPaint);
-
-        // Tai đầu đen
-        canvas.drawCircle(Offset(-half * 0.7, -half * 0.7), 3.5, Paint()..color = Colors.black87);
-        canvas.drawCircle(Offset(half * 0.7, -half * 0.7), 3.5, Paint()..color = Colors.black87);
-
-        // Mắt cáo
-        canvas.drawOval(Rect.fromCenter(center: Offset(-half * 0.35, -half * 0.1), width: 3, height: 4), eyePaint);
-        canvas.drawOval(Rect.fromCenter(center: Offset(half * 0.35, -half * 0.1), width: 3, height: 4), eyePaint);
-        // Mũi đen nhọn
-        canvas.drawCircle(const Offset(0, 6), 2.0, eyePaint);
-        break;
-    }
-  }
-
-  /// 3. Vẽ ô Đá Tảng
   void _drawStoneCell(Canvas canvas, int r, int c) {
     final center = scaler.getCellCenter(r, c);
-    final size = scaler.cellSize - 4.0;
+    final size = scaler.cellSize - 3.0;
     final rect = Rect.fromCenter(center: center, width: size, height: size);
 
-    // Đế đá
     canvas.drawRRect(
-      RRect.fromRectAndRadius(rect.shift(const Offset(0, 4)), const Radius.circular(8)),
+      RRect.fromRectAndRadius(rect.shift(const Offset(0, 6)), const Radius.circular(8)),
       Paint()..color = const Color(0xFF424242),
     );
-    // Thân đá
     canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(8)),
-      Paint()..color = const Color(0xFF757575),
+      RRect.fromRectAndRadius(rect.deflate(1.0), const Radius.circular(8)),
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF9E9E9E), Color(0xFF616161)],
+        ).createShader(rect),
     );
-    // Vết nứt đá
     final crackPaint = Paint()
-      ..color = const Color(0xFF303030)
-      ..strokeWidth = 1.5;
-    canvas.drawLine(center + const Offset(-8, -8), center + const Offset(4, 2), crackPaint);
-    canvas.drawLine(center + const Offset(4, 2), center + const Offset(8, 10), crackPaint);
+      ..color = const Color(0xFF37474F)
+      ..strokeWidth = 1.6
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(center + const Offset(-8, -8), center + const Offset(3, 2), crackPaint);
+    canvas.drawLine(center + const Offset(3, 2), center + const Offset(8, 9), crackPaint);
   }
 
-  /// 4. Vẽ ô bị khóa (Hố đen hoặc góc dị hình)
   void _drawLockedCell(Canvas canvas, int r, int c) {
     final center = scaler.getCellCenter(r, c);
     final size = scaler.cellSize - 4.0;
@@ -327,41 +316,41 @@ class Board25DPainter extends CustomPainter {
 
     canvas.drawRRect(
       RRect.fromRectAndRadius(rect, const Radius.circular(8)),
-      Paint()..color = Colors.black87,
+      Paint()..color = const Color(0xFF1F1610),
     );
-    // Biểu tượng ổ khóa
     final lockPaint = Paint()
       ..color = Colors.white54
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0;
     canvas.drawCircle(center + const Offset(0, -3), 4, lockPaint);
     canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromCenter(center: center + const Offset(0, 4), width: 12, height: 10), const Radius.circular(2)),
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(center: center + const Offset(0, 4), width: 12, height: 10),
+        const Radius.circular(2),
+      ),
       Paint()..color = Colors.white70,
     );
   }
 
-  /// 5. Lớp phủ Băng Giá (ICE 2 lớp)
   void _drawIceOverlay(Canvas canvas, int r, int c, int iceLayer) {
     final center = scaler.getCellCenter(r, c);
-    final size = scaler.cellSize - 3.0;
+    final size = scaler.cellSize - 2.0;
     final rect = Rect.fromCenter(center: center, width: size, height: size);
 
-    // Lớp băng xanh trong suốt
-    final icePaint = Paint()
-      ..color = const Color(0x99B3E5FC)
-      ..style = PaintingStyle.fill;
-    canvas.drawRRect(RRect.fromRectAndRadius(rect, const Radius.circular(8)), icePaint);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, const Radius.circular(8)),
+      Paint()..color = const Color(0x99B3E5FC),
+    );
 
-    // Viền băng
-    final borderPaint = Paint()
-      ..color = const Color(0xCCFFFFFF)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.8;
-    canvas.drawRRect(RRect.fromRectAndRadius(rect, const Radius.circular(8)), borderPaint);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, const Radius.circular(8)),
+      Paint()
+        ..color = const Color(0xCCFFFFFF)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.8,
+    );
 
     if (iceLayer == 1) {
-      // Băng nứt: vẽ vết rạn nứt trắng
       final crackPaint = Paint()
         ..color = Colors.white
         ..strokeWidth = 1.8;
@@ -371,50 +360,39 @@ class Board25DPainter extends CustomPainter {
     }
   }
 
-  /// 6. Lớp phủ Bom Hẹn Giờ
   void _drawBombOverlay(Canvas canvas, int r, int c, int turnsLeft) {
     final center = scaler.getCellCenter(r, c);
+    canvas.drawCircle(center, 12, Paint()..color = const Color(0xFF212121));
 
-    // Quả bom tròn đen
-    final bombPaint = Paint()..color = const Color(0xFF212121);
-    canvas.drawCircle(center, 12, bombPaint);
-
-    // Ngòi nổ & tia lửa
     final fusePaint = Paint()
       ..color = const Color(0xFFFFB300)
       ..strokeWidth = 2.0;
     canvas.drawLine(center + const Offset(4, -10), center + const Offset(8, -14), fusePaint);
     canvas.drawCircle(center + const Offset(8, -14), 2.5, Paint()..color = const Color(0xFFFF1744));
 
-    // Huy hiệu đếm ngược
-    final textSpan = TextSpan(
-      text: '$turnsLeft',
-      style: const TextStyle(
-        color: Colors.white,
-        fontSize: 12,
-        fontWeight: FontWeight.bold,
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: '$turnsLeft',
+        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
       ),
-    );
-    final textPainter = TextPainter(text: textSpan, textDirection: TextDirection.ltr);
-    textPainter.layout();
+      textDirection: TextDirection.ltr,
+    )..layout();
     textPainter.paint(canvas, center - Offset(textPainter.width / 2, textPainter.height / 2));
   }
 
-  /// 7. Lớp phủ Dây Leo xanh
   void _drawVineOverlay(Canvas canvas, int r, int c) {
     final center = scaler.getCellCenter(r, c);
     final vinePaint = Paint()
-      ..color = const Color(0xFF2E7D32)
-      ..strokeWidth = 2.2
+      ..color = const Color(0xFF2D8512)
+      ..strokeWidth = 2.4
       ..style = PaintingStyle.stroke;
 
-    final path = Path();
-    path.moveTo(center.dx - 12, center.dy + 12);
-    path.quadraticBezierTo(center.dx - 6, center.dy - 6, center.dx + 12, center.dy - 12);
+    final path = Path()
+      ..moveTo(center.dx - 12, center.dy + 12)
+      ..quadraticBezierTo(center.dx - 6, center.dy - 6, center.dx + 12, center.dy - 12);
     canvas.drawPath(path, vinePaint);
 
-    // Lá cây nhỏ
-    final leafPaint = Paint()..color = const Color(0xFF66BB6A);
+    final leafPaint = Paint()..color = const Color(0xFF81E659);
     canvas.drawOval(Rect.fromCenter(center: center + const Offset(-4, 0), width: 6, height: 4), leafPaint);
     canvas.drawOval(Rect.fromCenter(center: center + const Offset(6, -2), width: 6, height: 4), leafPaint);
   }
@@ -430,18 +408,18 @@ class Board25DPainter extends CustomPainter {
       if (targetR < 0 || targetR >= 8 || targetC < 0 || targetC >= 8) continue;
 
       final center = scaler.getCellCenter(targetR, targetC);
-      final size = scaler.cellSize - 4.0;
+      final size = scaler.cellSize - 3.0;
       final rect = Rect.fromCenter(center: center, width: size, height: size);
       final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(8));
 
       final ghostPaint = Paint()
         ..color = isValidGhost
-            ? tile.petColor.primaryColor.withValues(alpha: 0.55)
+            ? tile.petColor.topGradientStart.withValues(alpha: 0.45)
             : const Color(0x66FF1744)
         ..style = PaintingStyle.fill;
 
       final ghostBorder = Paint()
-        ..color = isValidGhost ? Colors.white70 : const Color(0xFFFF5252)
+        ..color = isValidGhost ? Colors.white : const Color(0xFFFF5252)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2.0;
 
@@ -450,7 +428,6 @@ class Board25DPainter extends CustomPainter {
     }
   }
 
-  /// 9. Vòng tròn ngắm Búa Rèn Lửa 3x3
   void _drawHammerTargetReticle(Canvas canvas) {
     if (!isHammerActive || hammerHoverCell == null) return;
 
@@ -463,41 +440,44 @@ class Board25DPainter extends CustomPainter {
     final bottomRight = scaler.getCellCenter(maxR, maxC) + Offset(scaler.cellSize / 2, scaler.cellSize / 2);
     final areaRect = Rect.fromPoints(topLeft, bottomRight);
 
-    final areaPaint = Paint()..color = const Color(0x44FF3D00);
-    final borderPaint = Paint()
-      ..color = const Color(0xFFFF3D00)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.5;
-
-    canvas.drawRRect(RRect.fromRectAndRadius(areaRect, const Radius.circular(12)), areaPaint);
-    canvas.drawRRect(RRect.fromRectAndRadius(areaRect, const Radius.circular(12)), borderPaint);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(areaRect, const Radius.circular(12)),
+      Paint()..color = const Color(0x44FF3D00),
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(areaRect, const Radius.circular(12)),
+      Paint()
+        ..color = const Color(0xFFFF3D00)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.5,
+    );
   }
 
-  /// 10. Chữ nổi Combo x2!, Combo x4! nảy lên khi phá hàng
+  /// 10. Chữ nổi (+150, COMBO x3!) nảy lên khi phá hàng
   void _drawComboPopups(Canvas canvas) {
     for (final effect in comboEffects) {
-      final yOffset = -25.0 * effect.progress;
+      final yOffset = -32.0 * effect.progress;
       final opacity = (1.0 - effect.progress).clamp(0.0, 1.0);
-      final scale = 1.0 + 0.3 * math.sin(effect.progress * math.pi);
+      final scale = 1.0 + 0.35 * math.sin(effect.progress * math.pi);
 
-      final textSpan = TextSpan(
-        text: effect.text,
-        style: TextStyle(
-          color: const Color(0xFFFFD600).withValues(alpha: opacity),
-          fontSize: 26 * scale,
-          fontWeight: FontWeight.w900,
-          shadows: [
-            Shadow(
-              color: Colors.black.withValues(alpha: opacity * 0.8),
-              blurRadius: 8,
-              offset: const Offset(2, 2),
-            ),
-          ],
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: effect.text,
+          style: TextStyle(
+            color: effect.color.withValues(alpha: opacity),
+            fontSize: effect.fontSize * scale,
+            fontWeight: FontWeight.w900,
+            shadows: [
+              Shadow(
+                color: Colors.black.withValues(alpha: opacity * 0.85),
+                blurRadius: 8,
+                offset: const Offset(2, 2),
+              ),
+            ],
+          ),
         ),
-      );
-
-      final textPainter = TextPainter(text: textSpan, textDirection: TextDirection.ltr);
-      textPainter.layout();
+        textDirection: TextDirection.ltr,
+      )..layout();
       textPainter.paint(
         canvas,
         effect.position + Offset(-textPainter.width / 2, yOffset - textPainter.height / 2),
@@ -508,4 +488,3 @@ class Board25DPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant Board25DPainter oldDelegate) => true;
 }
-

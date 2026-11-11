@@ -1,15 +1,37 @@
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import '../models/enums.dart';
 import '../models/polyomino_shape.dart';
 import '../models/bus_data.dart';
+import '../core/game_event_bus.dart';
+import 'grid_engine.dart';
 
-class SmartSpawner {
-  final List<PolyominoShape?> nextShapes = [null, null, null];
+class SmartSpawner extends ChangeNotifier {
+  final List<PolyominoShape?> traySlots = List<PolyominoShape?>.filled(3, null);
   int _counter = 0;
+  int batchId = 0;
   final math.Random _random = math.Random();
 
+  /// Alias tương thích ngược cho các module cũ
+  List<PolyominoShape?> get nextShapes => traySlots;
+
   List<PolyominoShape> get activeShapes =>
-      nextShapes.whereType<PolyominoShape>().toList();
+      traySlots.whereType<PolyominoShape>().toList();
+
+  /// Kiểm tra toàn bộ 3 ô khay Next đã trống hết chưa (TUYỆT ĐỐI không dùng .isEmpty)
+  bool get isTrayEmpty => traySlots.every((element) => element == null);
+
+  void notifyTrayChanged() {
+    notifyListeners();
+  }
+
+  /// Xóa khối gạch khỏi ô khay ngay khi đặt thành công xuống bàn cờ
+  void clearSlot(int slotIndex) {
+    if (slotIndex >= 0 && slotIndex < traySlots.length) {
+      traySlots[slotIndex] = null;
+      notifyListeners();
+    }
+  }
 
   bool replenishIfNeeded({
     required List<PetColor> availableColors,
@@ -17,8 +39,9 @@ class SmartSpawner {
     required BusData? nextBus,
     required int emptyBoardCells,
   }) {
-    if (nextShapes.every((s) => s == null)) {
-      generateNewBatch(
+    final bool isEmpty = traySlots.every((element) => element == null);
+    if (isEmpty) {
+      refillTray(
         availableColors: availableColors,
         activeBus: activeBus,
         nextBus: nextBus,
@@ -29,15 +52,86 @@ class SmartSpawner {
     return false;
   }
 
-  /// Sinh một đợt 3 khối gạch mới:
-  /// - Ít nhất 45% ô gạch trùng màu với activeBus hoặc nextBus
-  /// - Kích hoạt Mercy Rule (tăng tỷ lệ khối 1x1, 1x2) khi bàn cờ đầy trên 75% (<= 16 ô trống)
-  void generateNewBatch({
+  /// Nạp mới toàn bộ 3 khối gạch đảm bảo ít nhất 1 khối đặt vừa vào bàn cờ 8x8 hiện tại
+  void refillTrayGuaranteedPlayable({
+    required GridEngine gridEngine,
+    required List<PetColor> availableColors,
+    required BusData? activeBus,
+    required BusData? nextBus,
+  }) {
+    final List<PetColor> priorityColors = [];
+    if (activeBus != null && !priorityColors.contains(activeBus.color)) {
+      priorityColors.add(activeBus.color);
+    }
+    if (nextBus != null && !priorityColors.contains(nextBus.color)) {
+      priorityColors.add(nextBus.color);
+    }
+
+    final int emptyCells = gridEngine.emptyCellCount;
+    final bool isMercyRuleActive = emptyCells <= 16;
+
+    for (int i = 0; i < 3; i++) {
+      traySlots[i] = _createSmartShape(
+        availableColors: availableColors,
+        priorityColors: priorityColors,
+        isMercy: isMercyRuleActive,
+      );
+    }
+
+    // Kiểm tra chống kẹt oan: Nếu cả 3 khối đều không có chỗ đặt trên gridEngine -> ép slot 0 thành khối nhỏ vừa vặn!
+    if (!gridEngine.hasValidMoveForShapes(activeShapes) && emptyCells > 0) {
+      final sortedTemplates = List<ShapeTemplate>.from(kPolyominoTemplates)
+        ..sort((a, b) => a.offsets.length.compareTo(b.offsets.length));
+
+      final PetColor fallbackColor = priorityColors.isNotEmpty
+          ? priorityColors.first
+          : availableColors[_random.nextInt(availableColors.length)];
+
+      for (final template in sortedTemplates) {
+        final tiles = template.offsets
+            .map((pt) => ShapeTile(r: pt.r, c: pt.c, petColor: fallbackColor))
+            .toList();
+        final int maxR = tiles.map((t) => t.r).reduce(math.max);
+        final int maxC = tiles.map((t) => t.c).reduce(math.max);
+        _counter++;
+        final candidate = PolyominoShape(
+          id: 'safe_${_counter}_${DateTime.now().millisecondsSinceEpoch}',
+          name: template.name,
+          tiles: tiles,
+          width: maxC + 1,
+          height: maxR + 1,
+        );
+
+        if (gridEngine.hasValidMoveForShapes([candidate])) {
+          traySlots[0] = candidate;
+          break;
+        }
+      }
+    }
+
+    batchId++;
+    GameEventBus.instance.fire(TrayRefilledEvent(batchId: batchId));
+    notifyListeners();
+  }
+
+  /// Nạp mới toàn bộ 3 khối gạch vào khay Next và phát sự kiện cho hiệu ứng scale 0.0 -> 1.0
+  void refillTray({
     required List<PetColor> availableColors,
     required BusData? activeBus,
     required BusData? nextBus,
     required int emptyBoardCells,
+    GridEngine? gridEngine,
   }) {
+    if (gridEngine != null) {
+      refillTrayGuaranteedPlayable(
+        gridEngine: gridEngine,
+        availableColors: availableColors,
+        activeBus: activeBus,
+        nextBus: nextBus,
+      );
+      return;
+    }
+
     final List<PetColor> priorityColors = [];
     if (activeBus != null && !priorityColors.contains(activeBus.color)) {
       priorityColors.add(activeBus.color);
@@ -50,12 +144,31 @@ class SmartSpawner {
     final bool isMercyRuleActive = emptyBoardCells <= 16;
 
     for (int i = 0; i < 3; i++) {
-      nextShapes[i] = _createSmartShape(
+      traySlots[i] = _createSmartShape(
         availableColors: availableColors,
         priorityColors: priorityColors,
         isMercy: isMercyRuleActive,
       );
     }
+
+    batchId++;
+    GameEventBus.instance.fire(TrayRefilledEvent(batchId: batchId));
+    notifyListeners();
+  }
+
+  /// Sinh một đợt 3 khối gạch mới
+  void generateNewBatch({
+    required List<PetColor> availableColors,
+    required BusData? activeBus,
+    required BusData? nextBus,
+    required int emptyBoardCells,
+  }) {
+    refillTray(
+      availableColors: availableColors,
+      activeBus: activeBus,
+      nextBus: nextBus,
+      emptyBoardCells: emptyBoardCells,
+    );
   }
 
   PolyominoShape _createSmartShape({
@@ -105,24 +218,26 @@ class SmartSpawner {
 
   PolyominoShape? takeShape(int slotIndex) {
     if (slotIndex < 0 || slotIndex >= 3) return null;
-    final shape = nextShapes[slotIndex];
-    nextShapes[slotIndex] = null;
+    final shape = traySlots[slotIndex];
+    traySlots[slotIndex] = null;
+    notifyListeners();
     return shape;
   }
 
   void returnShape(int slotIndex, PolyominoShape shape) {
     if (slotIndex >= 0 && slotIndex < 3) {
-      nextShapes[slotIndex] = shape;
+      traySlots[slotIndex] = shape;
+      notifyListeners();
     }
   }
 
   /// La Bàn Gió: Xoay 90 độ tất cả khối gạch đang có trong khay Next
   void rotateAllShapes() {
     for (int i = 0; i < 3; i++) {
-      if (nextShapes[i] != null) {
-        nextShapes[i] = nextShapes[i]!.rotateClockwise();
+      if (traySlots[i] != null) {
+        traySlots[i] = traySlots[i]!.rotateClockwise();
       }
     }
+    notifyListeners();
   }
 }
-
