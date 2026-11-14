@@ -374,6 +374,13 @@ class AuthService extends ChangeNotifier {
     required String emailOrUsername,
     required String password,
   }) async {
+    final cleanInput = emailOrUsername.trim();
+    final cleanPassword = password.trim();
+
+    if (cleanInput.isEmpty || cleanPassword.isEmpty) {
+      return 'auth_fill_account_pass'.tr;
+    }
+
     _isLoading = true;
     notifyListeners();
 
@@ -385,7 +392,6 @@ class AuthService extends ChangeNotifier {
         return 'Firebase chưa được khởi tạo.';
       }
 
-      final cleanInput = emailOrUsername.trim();
       final email = cleanInput.contains('@') ? cleanInput : '$cleanInput@bida.com';
       final isLoggingAdmin = checkIsAdmin(email: email, username: cleanInput);
 

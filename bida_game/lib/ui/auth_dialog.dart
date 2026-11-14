@@ -66,26 +66,32 @@ class _AuthDialogState extends State<AuthDialog> with SingleTickerProviderStateM
     });
 
     final account = _loginAccountController.text.trim();
-    final pass = _loginPasswordController.text;
+    final pass = _loginPasswordController.text.trim();
 
     if (account.isEmpty || pass.isEmpty) {
       setState(() => _errorMessage = 'auth_fill_account_pass'.tr);
       return;
     }
 
-    final error = await AuthService.instance.login(
-      emailOrUsername: account,
-      password: pass,
-    );
+    try {
+      final error = await AuthService.instance.login(
+        emailOrUsername: account,
+        password: pass,
+      );
 
-    if (mounted) {
-      if (error != null) {
-        setState(() => _errorMessage = error);
-      } else {
-        setState(() => _successMessage = 'login_success_welcome'.tr.replaceAll('{name}', AuthService.instance.displayName));
-        Future.delayed(const Duration(milliseconds: 1000), () {
-          if (mounted) Navigator.of(context).pop();
-        });
+      if (mounted) {
+        if (error != null) {
+          setState(() => _errorMessage = error);
+        } else {
+          setState(() => _successMessage = 'login_success_welcome'.tr.replaceAll('{name}', AuthService.instance.displayName));
+          Future.delayed(const Duration(milliseconds: 1000), () {
+            if (mounted) Navigator.of(context).pop();
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _errorMessage = 'auth_fill_account_pass'.tr);
       }
     }
   }
@@ -98,7 +104,7 @@ class _AuthDialogState extends State<AuthDialog> with SingleTickerProviderStateM
 
     final name = _regNameController.text.trim();
     final account = _regAccountController.text.trim();
-    final pass = _regPasswordController.text;
+    final pass = _regPasswordController.text.trim();
 
     if (name.isEmpty || account.isEmpty || pass.isEmpty) {
       setState(() => _errorMessage = 'auth_fill_all'.tr);

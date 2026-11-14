@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import '../models/enums.dart';
 import '../models/bus_data.dart';
 import 'grid_engine.dart';
@@ -23,6 +24,7 @@ class BusStationManager {
   int dockCapacity = kMaxDockSlots;
   late List<HoldingDockSlot> holdingDock;
   int totalDispatchedCount = 0;
+  int initialBusCount = 0;
 
   BusStationManager({int initialDockCapacity = kMaxDockSlots}) {
     dockCapacity = initialDockCapacity;
@@ -70,6 +72,7 @@ class BusStationManager {
     activeBus = null;
     queuedBuses.clear();
     totalDispatchedCount = 0;
+    initialBusCount = 0;
     for (final slot in holdingDock) {
       slot.petColor = null;
       slot.isLocked = false;
@@ -78,6 +81,7 @@ class BusStationManager {
 
   void initializeBuses(List<BusData> buses) {
     reset();
+    initialBusCount = buses.length;
     if (buses.isNotEmpty) {
       activeBus = buses.first;
       if (buses.length > 1) {
@@ -94,10 +98,19 @@ class BusStationManager {
 
   bool get allBusesCleared => activeBus == null && queuedBuses.isEmpty;
 
-  /// Thuật toán EXTRACT_PASSENGERS:
-  /// Luôn sắp xếp thú cưng trùng màu với activeBus (hoặc bất kỳ màu nào nếu là Rainbow Bus) lên đầu danh sách trước.
-  /// Thú trùng màu nhảy thẳng lên xe. Nếu xe đầy, xe lăn bánh và gọi ngay khách trùng màu từ Ghế chờ.
-  /// Thú khác màu chuyển vào ghế chờ. Nếu ghế chờ hết chỗ -> dockOverflow = true!
+  int get totalBusesInLevel => initialBusCount > 0
+      ? initialBusCount
+      : (totalDispatchedCount + (activeBus != null ? 1 : 0) + queuedBuses.length);
+
+  int get currentBusNumber => (totalDispatchedCount + (activeBus != null ? 1 : 0))
+      .clamp(1, math.max(1, totalBusesInLevel));
+
+  List<BusData> get queuedBusesList => List.unmodifiable(queuedBuses);
+
+  /// Thuật toán EXTRACT_PASSENGERS chuẩn Bus Solver:
+  /// Khách trùng màu với activeBus (hoặc bất kỳ màu nào nếu là Rainbow Bus) sẽ lên xe ngay.
+  /// Nếu xe đầy và xuất bến -> xe tiếp theo cập bến và tiếp tục đón khách trùng màu từ danh sách vừa giải phóng.
+  /// Chỉ những khách thực sự không có xe đón tại thời điểm đó mới chuyển vào ghế chờ Holding Dock.
   PassengerExtractionResult extractAndSortPassengers(List<FreedPetInfo> freedPets) {
     final List<PassengerExtractionItem> items = [];
     final List<BusData> dispatched = [];
@@ -111,80 +124,80 @@ class BusStationManager {
       );
     }
 
-    // 1. Sắp xếp ưu tiên: Thú hợp lệ với activeBus lên trước
-    final isRainbow = activeBus?.isRainbow ?? false;
-    final activeColor = activeBus?.color;
-    final sortedPets = List<FreedPetInfo>.from(freedPets)..sort((a, b) {
-      final aMatch = (isRainbow || a.color == activeColor) ? 1 : 0;
-      final bMatch = (isRainbow || b.color == activeColor) ? 1 : 0;
-      return bMatch.compareTo(aMatch); // Trùng màu đứng trước
-    });
-
-    // 2. Phân phối thú cưng
+    final List<FreedPetInfo> pendingPets = List.from(freedPets);
     int idCounter = 0;
-    for (final pet in sortedPets) {
+
+    // 1. Phân phối khách trực tiếp lên các xe buýt đang đỗ và xe kế tiếp nếu xe đầy
+    while (pendingPets.isNotEmpty && activeBus != null && !activeBus!.isFull) {
+      final isRainbow = activeBus!.isRainbow;
+      final activeColor = activeBus!.color;
+      final matchIdx = pendingPets.indexWhere((p) => isRainbow || p.color == activeColor);
+
+      if (matchIdx == -1) break; // Không còn thú cưng nào trùng màu với xe đang đỗ
+
+      final pet = pendingPets.removeAt(matchIdx);
       final String itemId = 'pass_${DateTime.now().millisecondsSinceEpoch}_${idCounter++}';
 
-      // Nếu phù hợp với activeBus và xe chưa đầy
-      if (activeBus != null && activeBus!.accepts(pet.color) && !activeBus!.isFull) {
-        activeBus!.currentPassengers++;
-        activeBus!.passengerPets.add(pet.color);
+      activeBus!.currentPassengers++;
+      activeBus!.passengerPets.add(pet.color);
 
+      final item = PassengerExtractionItem(
+        id: itemId,
+        color: pet.color,
+        fromRow: pet.row,
+        fromCol: pet.col,
+        destination: PassengerDestination.bus,
+      );
+      items.add(item);
+      GameEventBus.instance.fire(PassengerBoardBusEvent(passenger: item, bus: activeBus!));
+
+      // Kiểm tra xe đã đón đủ khách chưa
+      if (activeBus!.isFull) {
+        final bus = dispatchActiveBus();
+        if (bus != null) {
+          dispatched.add(bus);
+          // Tự động gọi khách phù hợp từ ghế chờ lên xe mới vừa tiến vào trạm!
+          final pulled = pullMatchingPetsFromDock();
+          dispatched.addAll(pulled);
+        }
+      }
+    }
+
+    // 2. Những thú cưng còn lại không có xe đón sẽ chuyển vào ghế chờ Holding Dock
+    for (final pet in pendingPets) {
+      final String itemId = 'pass_${DateTime.now().millisecondsSinceEpoch}_${idCounter++}';
+      final emptySlot = holdingDock.cast<HoldingDockSlot?>().firstWhere(
+            (s) => s != null && s.isEmpty,
+            orElse: () => null,
+          );
+
+      if (emptySlot != null) {
+        emptySlot.petColor = pet.color;
         final item = PassengerExtractionItem(
           id: itemId,
           color: pet.color,
           fromRow: pet.row,
           fromCol: pet.col,
-          destination: PassengerDestination.bus,
+          destination: PassengerDestination.dock,
+          dockSlotIndex: emptySlot.slotIndex,
         );
         items.add(item);
-        GameEventBus.instance.fire(PassengerBoardBusEvent(passenger: item, bus: activeBus!));
-
-        // Kiểm tra xe đã đón đủ khách chưa
-        if (activeBus!.isFull) {
-          final bus = dispatchActiveBus();
-          if (bus != null) {
-            dispatched.add(bus);
-            // Tự động gọi khách phù hợp từ ghế chờ lên xe mới vừa tiến vào trạm!
-            final pulled = pullMatchingPetsFromDock();
-            dispatched.addAll(pulled);
-          }
-        }
+        GameEventBus.instance.fire(PassengerEnterDockEvent(
+          passenger: item,
+          slotIndex: emptySlot.slotIndex,
+        ));
       } else {
-        // Thú khác màu (hoặc xe đã đầy): Tìm ghế trống đầu tiên trên Holding Dock
-        final emptySlot = holdingDock.cast<HoldingDockSlot?>().firstWhere(
-              (s) => s != null && s.isEmpty,
-              orElse: () => null,
-            );
-
-        if (emptySlot != null) {
-          emptySlot.petColor = pet.color;
-          final item = PassengerExtractionItem(
-            id: itemId,
-            color: pet.color,
-            fromRow: pet.row,
-            fromCol: pet.col,
-            destination: PassengerDestination.dock,
-            dockSlotIndex: emptySlot.slotIndex,
-          );
-          items.add(item);
-          GameEventBus.instance.fire(PassengerEnterDockEvent(
-            passenger: item,
-            slotIndex: emptySlot.slotIndex,
-          ));
-        } else {
-          // Các ghế chờ đều đã kín chỗ! Tràn ghế chờ -> Game Over!
-          dockOverflow = true;
-          final item = PassengerExtractionItem(
-            id: itemId,
-            color: pet.color,
-            fromRow: pet.row,
-            fromCol: pet.col,
-            destination: PassengerDestination.dock,
-          );
-          items.add(item);
-          break; // Dừng lại để xử lý Game Over
-        }
+        // Các ghế chờ đều đã kín chỗ! Tràn ghế chờ -> Game Over!
+        dockOverflow = true;
+        final item = PassengerExtractionItem(
+          id: itemId,
+          color: pet.color,
+          fromRow: pet.row,
+          fromCol: pet.col,
+          destination: PassengerDestination.dock,
+        );
+        items.add(item);
+        break; // Dừng lại để xử lý Game Over
       }
     }
 

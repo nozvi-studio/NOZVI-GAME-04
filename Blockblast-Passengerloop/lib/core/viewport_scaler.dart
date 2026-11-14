@@ -75,42 +75,47 @@ class ViewportScaler {
     );
     cellSize = innerGridRect.width / 8.0;
 
-    // 2. Tính toán các ghế ngồi của Holding Dock trong Zone B
+    // 2. Tính toán 2 chiếc ghế ngồi (Holding Dock 3 chỗ & VIP Bench 2 chỗ) trong Zone B
     dockSlotRects.clear();
-    final benchWidth = math.min(availableWidth * 0.92, 380.0);
-    final benchLeft = (availableWidth - benchWidth) / 2;
-    final slotWidth = benchWidth / math.max(1, dockCapacity);
-    final slotHeight = math.min(zoneBRect.height * 0.75, 46.0);
-    final slotTop = zoneBRect.top + (zoneBRect.height - slotHeight) / 2;
+    final totalBenchesWidth = math.min(availableWidth * 0.92, 380.0);
+    final benchLeft = (availableWidth - totalBenchesWidth) / 2;
+    final int leftCount = dockCapacity <= 5 ? 3 : (dockCapacity - 2);
+    const double walkwayGap = 16.0;
+    final slotWidth = (totalBenchesWidth - walkwayGap) / math.max(1, dockCapacity);
+    final slotHeight = math.min(zoneBRect.height * 0.70, 44.0);
+    final slotTop = zoneBRect.top + (zoneBRect.height - slotHeight) / 2 - 2.0;
 
     for (int i = 0; i < dockCapacity; i++) {
+      final double x = (i < leftCount)
+          ? benchLeft + i * slotWidth
+          : benchLeft + leftCount * slotWidth + walkwayGap + (i - leftCount) * slotWidth;
       dockSlotRects.add(Rect.fromLTWH(
-        benchLeft + i * slotWidth + 3,
+        x + 2.5,
         slotTop,
-        slotWidth - 6,
+        slotWidth - 5.0,
         slotHeight,
       ));
     }
 
-    // 3. Tính toán Zone D: 2 nút Cổ vật và 3 khay gạch Next
-    final btnDiameter = math.min(54.0, zoneDRect.height * 0.58);
-    final btnTop = zoneDRect.top + (zoneDRect.height - btnDiameter) / 2;
-    hammerButtonRect = Rect.fromLTWH(14.0, btnTop, btnDiameter, btnDiameter);
-    compassButtonRect = Rect.fromLTWH(availableWidth - btnDiameter - 14.0, btnTop, btnDiameter, btnDiameter);
+    // 3. Tính toán Zone D: 2 nút Cổ vật và 3 khay gạch Next (Bảo đảm touch target tối thiểu 48dp theo HIG/Material)
+    final btnDiameter = math.max(48.0, math.min(52.0, zoneDRect.height * 0.50));
+    final btnTop = zoneDRect.top + 20.0;
+    hammerButtonRect = Rect.fromLTWH(12.0, btnTop, btnDiameter, btnDiameter);
+    compassButtonRect = Rect.fromLTWH(availableWidth - btnDiameter - 12.0, btnTop, btnDiameter, btnDiameter);
 
     traySlotRects.clear();
-    final trayLeft = hammerButtonRect.right + 10.0;
-    final trayRight = compassButtonRect.left - 10.0;
+    final trayLeft = hammerButtonRect.right + 8.0;
+    final trayRight = compassButtonRect.left - 8.0;
     final trayTotalWidth = trayRight - trayLeft;
     final singleTrayWidth = trayTotalWidth / 3.0;
-    final trayHeight = math.min(zoneDRect.height * 0.78, 76.0);
-    final trayTop = zoneDRect.top + (zoneDRect.height - trayHeight) / 2;
+    final trayHeight = math.min(zoneDRect.height * 0.68, 72.0);
+    final trayTop = zoneDRect.top + 22.0;
 
     for (int i = 0; i < 3; i++) {
       traySlotRects.add(Rect.fromLTWH(
-        trayLeft + i * singleTrayWidth + 4,
+        trayLeft + i * singleTrayWidth + 3.0,
         trayTop,
-        singleTrayWidth - 8,
+        singleTrayWidth - 6.0,
         trayHeight,
       ));
     }
@@ -129,6 +134,33 @@ class ViewportScaler {
 
     if (row >= 0 && row < 8 && col >= 0 && col < 8) {
       return PointInt(row, col);
+    }
+    return null;
+  }
+
+  /// Tính toán ô neo (targetRow, targetCol) trên bàn cờ 8x8 dựa trên vị trí ngón tay và hình dạng khối gạch
+  /// Đảm bảo khối gạch đang bay và bóng mờ (Ghost Preview) khớp nhau 100% từng pixel, không bị lệch ô!
+  PointInt? getShapeAnchorCellFromTouch(Offset rawTouchPoint, PolyominoShape shape) {
+    final dragCenterX = rawTouchPoint.dx;
+    final dragCenterY = rawTouchPoint.dy + touchOffsetY;
+
+    final dragTopLeftX = dragCenterX - (shape.width * cellSize) / 2.0;
+    final dragTopLeftY = dragCenterY - (shape.height * cellSize) / 2.0;
+
+    final shapeRect = Rect.fromLTWH(dragTopLeftX, dragTopLeftY, shape.width * cellSize, shape.height * cellSize);
+    final boardHoverZone = innerGridRect.inflate(cellSize * 0.4);
+    if (!boardHoverZone.overlaps(shapeRect)) {
+      return null;
+    }
+
+    final relativeCol = (dragTopLeftX - innerGridRect.left) / cellSize;
+    final relativeRow = (dragTopLeftY - innerGridRect.top) / cellSize;
+
+    final targetCol = relativeCol.round();
+    final targetRow = relativeRow.round();
+
+    if (targetRow >= -1 && targetRow <= 8 && targetCol >= -1 && targetCol <= 8) {
+      return PointInt(targetRow, targetCol);
     }
     return null;
   }

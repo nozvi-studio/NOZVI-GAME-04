@@ -43,6 +43,12 @@ class CommercialGameController extends ChangeNotifier {
   final List<FlyingPetAnim> flyingPets = [];
   final List<ComboEffectData> floatingPopups = [];
 
+  // Trạng thái diễn hoạt 2.5D của Xe Buýt: Xuất bến, Tiến vào trạm và Nhún giảm xóc khi khách lên xe
+  BusData? departingBus;
+  double busDepartureProgress = 1.0;
+  double busArrivalProgress = 1.0;
+  double busBounceProgress = 1.0;
+
   LinePreviewResult activeLinePreview = const LinePreviewResult();
 
   VoidCallback? onTrayRefilled;
@@ -69,6 +75,10 @@ class CommercialGameController extends ChangeNotifier {
     activeLinePreview = const LinePreviewResult();
     flyingPets.clear();
     floatingPopups.clear();
+    departingBus = null;
+    busDepartureProgress = 1.0;
+    busArrivalProgress = 0.0;
+    busBounceProgress = 1.0;
 
     levelConfig = LevelGenerator.getLevel(level);
     reviveController.reset();
@@ -293,6 +303,37 @@ class CommercialGameController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Bật nhảy thú cưng từ Ghế chờ Holding Dock lên Xe Buýt mới cập bến
+  void spawnDockToBusFlyingPet(int slotIndex, PetColor color, ViewportScaler scaler) {
+    final Offset start = scaler.getDockSlotCenter(slotIndex);
+    final Offset end = scaler.activeBusDoorCenter;
+    flyingPets.add(FlyingPetAnim(
+      id: 'dock_pet_${DateTime.now().microsecondsSinceEpoch}',
+      color: color,
+      start: start,
+      end: end,
+      progress: 0.0,
+    ));
+    triggerBusBounce();
+    notifyListeners();
+  }
+
+  void startBusDeparture(BusData bus) {
+    departingBus = bus.clone();
+    busDepartureProgress = 0.0;
+    notifyListeners();
+  }
+
+  void startNextBusArrival() {
+    busArrivalProgress = 0.0;
+    notifyListeners();
+  }
+
+  void triggerBusBounce() {
+    busBounceProgress = 0.0;
+    notifyListeners();
+  }
+
   void spawnClearPopups(LinesClearedEvent event, ViewportScaler scaler) {
     final int row = event.rows.isNotEmpty ? event.rows.first : 3;
     final int col = event.cols.isNotEmpty ? event.cols.first : 3;
@@ -333,7 +374,7 @@ class CommercialGameController extends ChangeNotifier {
     return coinsReward;
   }
 
-  void tickAnimations(double flyingProgress) {
+  void tickAnimations(double flyingProgress, {double delta = 0.035}) {
     for (int i = 0; i < flyingPets.length; i++) {
       flyingPets[i] = FlyingPetAnim(
         id: flyingPets[i].id,
@@ -345,6 +386,21 @@ class CommercialGameController extends ChangeNotifier {
     }
     if (flyingProgress >= 1.0) {
       flyingPets.clear();
+    }
+
+    if (busDepartureProgress < 1.0) {
+      busDepartureProgress = (busDepartureProgress + delta * 1.8).clamp(0.0, 1.0);
+      if (busDepartureProgress >= 1.0) {
+        departingBus = null;
+      }
+    }
+
+    if (busArrivalProgress < 1.0) {
+      busArrivalProgress = (busArrivalProgress + delta * 2.2).clamp(0.0, 1.0);
+    }
+
+    if (busBounceProgress < 1.0) {
+      busBounceProgress = (busBounceProgress + delta * 3.2).clamp(0.0, 1.0);
     }
 
     for (int i = 0; i < floatingPopups.length; i++) {

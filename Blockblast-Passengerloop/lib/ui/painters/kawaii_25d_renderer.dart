@@ -6,6 +6,11 @@ import '../../models/enums.dart';
 class Kawaii25DRenderer {
   const Kawaii25DRenderer._();
 
+  static final Paint _petDropShadowPaint = Paint()
+    ..color = Colors.black38
+    ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4.0);
+  static final Paint _petGlossPaint = Paint()..color = Colors.white.withValues(alpha: 0.35);
+
   /// Vẽ 1 ô khối 2.5D theo Skin đang trang bị, kết hợp nhịp thở và chớp mắt từ Ticker 60fps
   static void drawBlock(
     Canvas canvas,
@@ -89,9 +94,7 @@ class Kawaii25DRenderer {
     // LỚP 1: Drop Shadow
     canvas.drawRRect(
       RRect.fromRectAndRadius(cellRect.shift(const Offset(0, 7)), cornerRadius),
-      Paint()
-        ..color = Colors.black38
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4.0),
+      _petDropShadowPaint,
     );
 
     // LỚP 2: Đế 3D (Extrusion Lip)
@@ -130,7 +133,7 @@ class Kawaii25DRenderer {
     );
     canvas.drawRRect(
       RRect.fromRectAndRadius(glossRect, const Radius.circular(5.0)),
-      Paint()..color = Colors.white.withValues(alpha: 0.35),
+      _petGlossPaint,
     );
 
     // LỚP 5: Đôi Tai Nhô Khỏi Khối (3D Ears)

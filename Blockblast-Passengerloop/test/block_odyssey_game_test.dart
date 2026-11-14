@@ -1,5 +1,7 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:block_odyssey_pet_express/core/viewport_scaler.dart';
 import 'package:block_odyssey_pet_express/models/enums.dart';
 import 'package:block_odyssey_pet_express/models/polyomino_shape.dart';
 import 'package:block_odyssey_pet_express/models/bus_data.dart';
@@ -231,8 +233,8 @@ void main() {
     });
   });
 
-  group('LevelGenerator 200 Levels Tests', () {
-    test('Generates valid levels across all 5 chapters', () {
+  group('LevelGenerator 500 Levels & 11 Chapters Tests', () {
+    test('Generates valid levels across all 11 chapters', () {
       final lvl1 = LevelGenerator.getLevel(1);
       expect(lvl1.chapter, equals(1));
       expect(lvl1.availableColors.length, equals(2));
@@ -252,6 +254,67 @@ void main() {
       final lvl200 = LevelGenerator.getLevel(200);
       expect(lvl200.chapter, equals(5));
       expect(lvl200.buses.isNotEmpty, isTrue);
+
+      // Chapter 6: Thung Lũng Dung Nham (201-250)
+      final lvl225 = LevelGenerator.getLevel(225);
+      expect(lvl225.chapter, equals(6));
+      expect(lvl225.chapterName, contains('Dung Nham'));
+      // Center 2x2 locked
+      final c2x2 = [(3, 3), (3, 4), (4, 3), (4, 4)];
+      for (final (r, c) in c2x2) {
+        expect(lvl225.initialGrid.any((cell) => cell.row == r && cell.col == c && cell.isLocked), isTrue);
+      }
+      expect(lvl225.buses.any((b) => b.capacity >= 5), isTrue);
+
+      // Chapter 7: Bến Cảng Hoàng Hôn (251-300)
+      final lvl275 = LevelGenerator.getLevel(275);
+      expect(lvl275.chapter, equals(7));
+      expect(lvl275.chapterName, contains('Bến Cảng'));
+      expect(lvl275.lockedDockSlots, equals([3, 4])); // Thắt cổ chai ghế chờ
+      // H-Shape cutouts locked
+      expect(lvl275.initialGrid.any((cell) => cell.row == 0 && cell.col == 3 && cell.isLocked), isTrue);
+      expect(lvl275.initialGrid.any((cell) => cell.row == 7 && cell.col == 4 && cell.isLocked), isTrue);
+
+      // Chapter 8: Vườn Nấm Phát Sáng (301-350)
+      final lvl325 = LevelGenerator.getLevel(325);
+      expect(lvl325.chapter, equals(8));
+      expect(lvl325.chapterName, contains('Vườn Nấm'));
+      expect(lvl325.initialGrid.any((cell) => cell.hazard == HazardType.vine), isTrue);
+      expect(lvl325.initialGrid.any((cell) => cell.hazard == HazardType.ice), isTrue);
+
+      // Chapter 9: Nhà Máy Bánh Răng (351-400)
+      final lvl375 = LevelGenerator.getLevel(375);
+      expect(lvl375.chapter, equals(9));
+      expect(lvl375.chapterName, contains('Bánh Răng'));
+      // Bomb turns between 4 and 5
+      final bombs = lvl375.initialGrid.where((cell) => cell.hazard == HazardType.bomb);
+      if (bombs.isNotEmpty) {
+        expect(bombs.first.bombTurns, inInclusiveRange(4, 5));
+      }
+
+      // Chapter 10: Xứ Sở Kẹo Ngọt (401-450)
+      final lvl425 = LevelGenerator.getLevel(425);
+      expect(lvl425.chapter, equals(10));
+      expect(lvl425.chapterName, contains('Kẹo Ngọt'));
+      final ice1HpCells = lvl425.initialGrid.where((cell) => cell.hazard == HazardType.ice && cell.iceLayer == 1);
+      expect(ice1HpCells.length, greaterThanOrEqualTo(24)); // 50% domino ice
+
+      // Chapter 11: Thiên Hà Tinh Vân (451-500)
+      final lvl470 = LevelGenerator.getLevel(470); // Boss Level
+      expect(lvl470.chapter, equals(11));
+      expect(lvl470.chapterName, contains('BOSS'));
+      expect(lvl470.buses.length, greaterThanOrEqualTo(7));
+      expect(lvl470.initialGrid.any((cell) => cell.hazard == HazardType.stone), isTrue);
+      expect(lvl470.initialGrid.any((cell) => cell.hazard == HazardType.bomb), isTrue);
+      expect(lvl470.initialGrid.any((cell) => cell.hazard == HazardType.ice), isTrue);
+      expect(lvl470.initialGrid.any((cell) => cell.hazard == HazardType.vine), isTrue);
+
+      // Level 500: Đại Boss Vũ Trụ
+      final lvl500 = LevelGenerator.getLevel(500);
+      expect(lvl500.chapter, equals(11));
+      expect(lvl500.chapterName, contains('ĐẠI BOSS'));
+      expect(lvl500.buses.length, equals(9));
+      expect(lvl500.buses.last.isRainbow, isTrue); // Rainbow Express on Level 500!
     });
   });
 
@@ -518,6 +581,89 @@ void main() {
       final claimed = await questService.claimQuest('combo_x4');
       expect(claimed, isTrue);
       expect(comboQuest.isClaimed, isTrue);
+    });
+
+    test('Dual-Puzzle Bus Fleet Tracking & Dock Jam Alert Logic', () {
+      final station = BusStationManager();
+      final buses = [
+        BusData(id: 'b1', color: PetColor.red, name: 'Corgi Bus', capacity: 2),
+        BusData(id: 'b2', color: PetColor.yellow, name: 'Cat Bus', capacity: 3),
+        BusData(id: 'b3', color: PetColor.blue, name: 'Bunny Bus', capacity: 4),
+      ];
+      station.initializeBuses(buses);
+
+      expect(station.totalBusesInLevel, equals(3));
+      expect(station.currentBusNumber, equals(1));
+      expect(station.activeBus?.color, equals(PetColor.red));
+      expect(station.nextBus?.color, equals(PetColor.yellow));
+      expect(station.queuedBusesList.length, equals(2));
+
+      // Simulate first bus departure
+      station.dispatchActiveBus();
+      expect(station.totalDispatchedCount, equals(1));
+      expect(station.totalBusesInLevel, equals(3));
+      expect(station.currentBusNumber, equals(2));
+      expect(station.activeBus?.color, equals(PetColor.yellow));
+      expect(station.nextBus?.color, equals(PetColor.blue));
+      expect(station.queuedBusesList.length, equals(1));
+
+      // Test Dock Jam Alert
+      expect(station.dockedPetCount, equals(0));
+      for (int i = 0; i < 4; i++) {
+        station.holdingDock[i].petColor = PetColor.orange;
+      }
+      expect(station.dockedPetCount, equals(4));
+      // 4 out of 5 is near full (traffic jam danger state)
+      expect(station.dockedPetCount >= station.dockCapacity - 1, isTrue);
+    });
+
+    test('ViewportScaler getShapeAnchorCellFromTouch aligns dragging shape with ghost preview', () {
+      final scaler = ViewportScaler(
+        screenSize: const Size(360, 780),
+        padding: EdgeInsets.zero,
+      );
+
+      // 1x1 Dot shape
+      final dotShape = PolyominoShape(
+        id: 'dot',
+        name: 'Dot1x1',
+        tiles: [const ShapeTile(r: 0, c: 0, petColor: PetColor.red)],
+        width: 1,
+        height: 1,
+      );
+
+      // Cell (3, 3) center
+      final cell33Center = scaler.getCellCenter(3, 3);
+      // To hover directly over cell (3, 3), rawTouchPoint.dy = cellCenter.dy - touchOffsetY
+      final touchForCell33 = Offset(cell33Center.dx, cell33Center.dy - ViewportScaler.touchOffsetY);
+      final anchor1x1 = scaler.getShapeAnchorCellFromTouch(touchForCell33, dotShape);
+      expect(anchor1x1, isNotNull);
+      expect(anchor1x1!.r, equals(3));
+      expect(anchor1x1.c, equals(3));
+
+      // 2x2 Square shape
+      final square2x2 = PolyominoShape(
+        id: 'sq2',
+        name: 'Square2x2',
+        tiles: [
+          const ShapeTile(r: 0, c: 0, petColor: PetColor.red),
+          const ShapeTile(r: 0, c: 1, petColor: PetColor.red),
+          const ShapeTile(r: 1, c: 0, petColor: PetColor.red),
+          const ShapeTile(r: 1, c: 1, petColor: PetColor.red),
+        ],
+        width: 2,
+        height: 2,
+      );
+      // Center of 2x2 covering rows 2-3, cols 4-5
+      final squareCenter = Offset(
+        scaler.innerGridRect.left + 5.0 * scaler.cellSize,
+        scaler.innerGridRect.top + 3.0 * scaler.cellSize,
+      );
+      final touchForSq = Offset(squareCenter.dx, squareCenter.dy - ViewportScaler.touchOffsetY);
+      final anchor2x2 = scaler.getShapeAnchorCellFromTouch(touchForSq, square2x2);
+      expect(anchor2x2, isNotNull);
+      expect(anchor2x2!.r, equals(2));
+      expect(anchor2x2.c, equals(4));
     });
   });
 }

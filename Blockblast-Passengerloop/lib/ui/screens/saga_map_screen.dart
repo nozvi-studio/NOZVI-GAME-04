@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../logic/player_economy_service.dart';
 import '../../core/pentatonic_audio_synth.dart';
 
-/// Tab 2 - Bản Đồ Hành Trình 200 Màn (Saga World Map) uốn lượn qua 5 Chương
+/// Tab 2 - Bản Đồ Hành Trình 500 Màn (Saga World Map) uốn lượn qua 11 Chương
 class SagaMapScreen extends StatefulWidget {
   final Function(int level) onSelectLevel;
 
@@ -46,8 +46,28 @@ class _SagaMapScreenState extends State<SagaMapScreen> {
       case 4:
         startLevel = 131;
         break;
-      default:
+      case 5:
         startLevel = 171;
+        break;
+      case 6:
+        startLevel = 201;
+        break;
+      case 7:
+        startLevel = 251;
+        break;
+      case 8:
+        startLevel = 301;
+        break;
+      case 9:
+        startLevel = 351;
+        break;
+      case 10:
+        startLevel = 401;
+        break;
+      case 11:
+      default:
+        startLevel = 451;
+        break;
     }
 
     if (_scrollController.hasClients) {
@@ -98,11 +118,59 @@ class _SagaMapScreenState extends State<SagaMapScreen> {
         emoji: '🧸',
       );
     }
+    if (level <= 200) {
+      return (
+        title: 'Chương 5: Thủ Đô Di Chúc (171-200)',
+        c1: const Color(0xFFFF6B5B),
+        c2: const Color(0xFFA82419),
+        emoji: '👑',
+      );
+    }
+    if (level <= 250) {
+      return (
+        title: 'Chương 6: Thung Lũng Dung Nham (201-250)',
+        c1: const Color(0xFFFF5722),
+        c2: const Color(0xFFD84315),
+        emoji: '🌋',
+      );
+    }
+    if (level <= 300) {
+      return (
+        title: 'Chương 7: Bến Cảng Hoàng Hôn (251-300)',
+        c1: const Color(0xFF7E57C2),
+        c2: const Color(0xFF283593),
+        emoji: '⚓',
+      );
+    }
+    if (level <= 350) {
+      return (
+        title: 'Chương 8: Vườn Nấm Phát Sáng (301-350)',
+        c1: const Color(0xFF26A69A),
+        c2: const Color(0xFF004D40),
+        emoji: '🍄',
+      );
+    }
+    if (level <= 400) {
+      return (
+        title: 'Chương 9: Nhà Máy Bánh Răng (351-400)',
+        c1: const Color(0xFFFFA000),
+        c2: const Color(0xFF455A64),
+        emoji: '⚙️',
+      );
+    }
+    if (level <= 450) {
+      return (
+        title: 'Chương 10: Xứ Sở Kẹo Ngọt (401-450)',
+        c1: const Color(0xFFEC407A),
+        c2: const Color(0xFFAD1457),
+        emoji: '🍭',
+      );
+    }
     return (
-      title: 'Chương 5: Thủ Đô Di Chúc (171-200)',
-      c1: const Color(0xFFFF6B5B),
-      c2: const Color(0xFFA82419),
-      emoji: '👑',
+      title: 'Chương 11: Thiên Hà Tinh Vân (451-500)',
+      c1: const Color(0xFF7C4DFF),
+      c2: const Color(0xFF1A237E),
+      emoji: '🚀',
     );
   }
 
@@ -115,7 +183,7 @@ class _SagaMapScreenState extends State<SagaMapScreen> {
 
         return Column(
           children: [
-            // Nút Tập luyện Căn bản (FTUE) + Thanh chọn nhanh 5 Chương
+            // Nút Tập luyện Căn bản (FTUE) + Thanh chọn nhanh 11 Chương
             Container(
               color: const Color(0xFF21292E),
               padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
@@ -151,6 +219,12 @@ class _SagaMapScreenState extends State<SagaMapScreen> {
                         _buildChapterChip(3, 'C3: Dây Leo'),
                         _buildChapterChip(4, 'C4: Đồ Chơi'),
                         _buildChapterChip(5, 'C5: Thủ Đô'),
+                        _buildChapterChip(6, 'C6: Dung Nham'),
+                        _buildChapterChip(7, 'C7: Bến Cảng'),
+                        _buildChapterChip(8, 'C8: Vườn Nấm'),
+                        _buildChapterChip(9, 'C9: Bánh Răng'),
+                        _buildChapterChip(10, 'C10: Kẹo Ngọt'),
+                        _buildChapterChip(11, 'C11: Thiên Hà'),
                       ],
                     ),
                   ),
@@ -158,7 +232,7 @@ class _SagaMapScreenState extends State<SagaMapScreen> {
               ),
             ),
 
-            // Đường đi Saga uốn lượn 200 màn
+            // Đường đi Saga uốn lượn 500 màn
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) {
@@ -166,15 +240,25 @@ class _SagaMapScreenState extends State<SagaMapScreen> {
                   return ListView.builder(
                     controller: _scrollController,
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    itemCount: 200,
+                    itemCount: 500,
                     itemBuilder: (context, index) {
                       final int level = index + 1;
-                      final bool isChapterStart = level == 1 || level == 31 || level == 81 || level == 131 || level == 171;
+                      final bool isChapterStart = level == 1 ||
+                          level == 31 ||
+                          level == 81 ||
+                          level == 131 ||
+                          level == 171 ||
+                          level == 201 ||
+                          level == 251 ||
+                          level == 301 ||
+                          level == 351 ||
+                          level == 401 ||
+                          level == 451;
                       final info = _chapterInfo(level);
                       final bool isMilestone = PlayerEconomyService.kMilestoneLevels.contains(level);
 
                       final double xNorm = _nodeNormalizedX(index);
-                      final double nextXNorm = level < 200 ? _nodeNormalizedX(index + 1) : xNorm;
+                      final double nextXNorm = level < 500 ? _nodeNormalizedX(index + 1) : xNorm;
                       final double nodeX = width / 2 + xNorm * (width * 0.34);
                       final double nextNodeX = width / 2 + nextXNorm * (width * 0.34);
 
@@ -213,7 +297,7 @@ class _SagaMapScreenState extends State<SagaMapScreen> {
                               clipBehavior: Clip.none,
                               children: [
                                 // Đoạn đường cong nối sang màn kế tiếp
-                                if (level < 200)
+                                if (level < 500)
                                   Positioned.fill(
                                     child: CustomPaint(
                                       painter: _SagaPathPainter(
@@ -239,7 +323,7 @@ class _SagaMapScreenState extends State<SagaMapScreen> {
                                   ),
                                 ),
 
-                                // Rương Quà tại các mốc màn 10, 25, 50, 100, 150, 200
+                                // Rương Quà tại các mốc màn 10, 25, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500
                                 if (isMilestone)
                                   Positioned(
                                     left: xNorm > 0 ? nodeX - 102 : nodeX + 42,

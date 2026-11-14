@@ -6,7 +6,7 @@ import '../core/pentatonic_audio_synth.dart';
 import '../core/haptics_manager.dart';
 
 /// Quản lý kinh tế người chơi (Xu Vàng, Ngọc), Kho Skin, Nâng cấp Cổ vật,
-/// Tiến độ Sao 200 màn chơi, Rương Mốc & Cài đặt Âm thanh/Rung.
+/// Tiến độ Sao 500 màn chơi, Rương Mốc & Cài đặt Âm thanh/Rung.
 class PlayerEconomyService extends ChangeNotifier {
   static final PlayerEconomyService instance = PlayerEconomyService._internal();
   PlayerEconomyService._internal();
@@ -23,7 +23,9 @@ class PlayerEconomyService extends ChangeNotifier {
   static const String _prefSfxKey = 'settings_sfx_enabled';
   static const String _prefHapticsKey = 'settings_haptics_enabled';
 
-  static const List<int> kMilestoneLevels = [10, 25, 50, 100, 150, 200];
+  static const List<int> kMilestoneLevels = [
+    10, 25, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500,
+  ];
 
   int _coins = 350; // Tặng 350 Xu khởi đầu để trải nghiệm Shop & nâng cấp
   int _gems = 50;
@@ -88,10 +90,10 @@ class PlayerEconomyService extends ChangeNotifier {
 
       _starterHammerLevel = (prefs.getInt(_prefHammerUpgradeKey) ?? 0).clamp(0, 3);
       _starterCompassLevel = (prefs.getInt(_prefCompassUpgradeKey) ?? 0).clamp(0, 2);
-      _unlockedLevel = (prefs.getInt(_prefUnlockedLevelKey) ?? 1).clamp(1, 200);
+      _unlockedLevel = (prefs.getInt(_prefUnlockedLevelKey) ?? 1).clamp(1, 500);
 
       _levelStars.clear();
-      for (int i = 1; i <= 200; i++) {
+      for (int i = 1; i <= 500; i++) {
         final stars = prefs.getInt('level_stars_$i');
         if (stars != null) {
           _levelStars[i] = stars;
@@ -200,10 +202,10 @@ class PlayerEconomyService extends ChangeNotifier {
 
   /// Lưu kết quả thắng màn (1-3 Sao) & mở khóa màn tiếp theo
   Future<void> recordLevelVictory(int level, int stars, int rewardCoins) async {
-    if (level >= 1 && level <= 200) {
+    if (level >= 1 && level <= 500) {
       final oldStars = _levelStars[level] ?? 0;
       _levelStars[level] = math.max(oldStars, stars.clamp(1, 3));
-      if (level >= _unlockedLevel && level < 200) {
+      if (level >= _unlockedLevel && level < 500) {
         _unlockedLevel = level + 1;
       }
     }

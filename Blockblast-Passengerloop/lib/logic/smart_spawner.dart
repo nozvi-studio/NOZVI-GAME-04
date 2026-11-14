@@ -188,12 +188,19 @@ class SmartSpawner extends ChangeNotifier {
       template = kPolyominoTemplates[_random.nextInt(kPolyominoTemplates.length)];
     }
 
-    // 2. Xác định màu sắc: đảm bảo >= 45% tỷ lệ trùng màu với xe đang đỗ / xe chờ
+    // 2. Xác định màu sắc chuẩn Bus Solver: ưu tiên cao cho Active Bus và Next Bus (72%)
     final PetColor shapeColor;
-    if (priorityColors.isNotEmpty && _random.nextDouble() < 0.48) {
-      shapeColor = priorityColors[_random.nextInt(priorityColors.length)];
-    } else {
+    if (priorityColors.isNotEmpty && _random.nextDouble() < 0.72) {
+      // Ưu tiên cao nhất cho xe đang đỗ tại bến để người chơi giải quyết mục tiêu đón xe
+      if (priorityColors.length >= 2 && _random.nextDouble() < 0.30) {
+        shapeColor = priorityColors[1]; // Next Bus
+      } else {
+        shapeColor = priorityColors[0]; // Active Bus
+      }
+    } else if (availableColors.isNotEmpty) {
       shapeColor = availableColors[_random.nextInt(availableColors.length)];
+    } else {
+      shapeColor = priorityColors.isNotEmpty ? priorityColors.first : PetColor.red;
     }
 
     final tiles = template.offsets.map((pt) {

@@ -13,7 +13,7 @@ import 'bus_rush_quests_screen.dart';
 
 /// Main Shell thương mại với Bottom Navigation 4 Tabs:
 /// Tab 0: Cửa Hàng & Kho Skin
-/// Tab 1: Bản Đồ Hành Trình 200 Màn (Mặc định)
+/// Tab 1: Bản Đồ Hành Trình 500 Màn (Mặc định)
 /// Tab 2: Đảo Thú Cưng 2.5D
 /// Tab 3: Đua Top Giờ Cao Điểm & 3 Nhiệm Vụ Hàng Ngày
 class MainMenuScreen extends StatefulWidget {
@@ -29,7 +29,7 @@ class MainMenuScreen extends StatefulWidget {
 }
 
 class _MainMenuScreenState extends State<MainMenuScreen> {
-  int _selectedTabIndex = 1; // Mặc định mở Bản Đồ Hành Trình 200 Màn
+  int _selectedTabIndex = 1; // Mặc định mở Bản Đồ Hành Trình 500 Màn
   String _username = 'Khách #3021';
   bool _isGuest = true;
 
@@ -73,7 +73,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              'Đăng nhập để đồng bộ Xu, Skin và tiến độ 200 màn chơi lên Đám mây (High-Watermark Merge).',
+              'Đăng nhập để đồng bộ Xu, Skin và tiến độ 500 màn chơi lên Đám mây (High-Watermark Merge).',
               style: TextStyle(color: Colors.white70, fontSize: 13),
             ),
             const SizedBox(height: 16),
