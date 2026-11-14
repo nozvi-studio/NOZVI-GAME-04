@@ -3757,6 +3757,9 @@ Widget _buildControlBar(
                 }
               }
 
+              p1Name = LanguageService.instance.localizeOpponentName(p1Name);
+              p2Name = LanguageService.instance.localizeOpponentName(p2Name);
+
               return Container(
                 height: (ultraCompact ? 48.0 : (compact ? 58.0 : 66.0)) * upscaleFactor.clamp(0.95, 1.15),
                 padding: EdgeInsets.symmetric(

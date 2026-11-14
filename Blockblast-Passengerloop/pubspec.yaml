@@ -1,0 +1,22 @@
+name: block_odyssey_pet_express
+description: 2.5D Hybrid Puzzle Game - Block Blast x Bus Fever Party
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  shared_preferences: ^2.2.3
+  audioplayers: ^6.0.0
+  vector_math: ^2.1.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+    <defs>
+      <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#8E2DE2" />
+        <stop offset="100%" stop-color="#4A00E0" />
+      </linearGradient>
+    </defs>
+    <rect width="800" height="600" fill="url(#grad)" />
+    
+      <circle cx="400" cy="300" r="110" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="8" />
+      <circle cx="400" cy="300" r="40" fill="rgba(255,255,255,0.35)" />
+    
+    <text x="40" y="550" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="700" fill="#FFFFFF" letter-spacing="0.5">Studio Reflection</text>
+  </svg>

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+    <defs>
+      <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#141E30" />
+        <stop offset="100%" stop-color="#243B55" />
+      </linearGradient>
+    </defs>
+    <rect width="800" height="600" fill="url(#grad)" />
+    
+      <rect x="180" y="240" width="100" height="260" fill="rgba(255,255,255,0.25)" rx="6"/>
+      <rect x="310" y="160" width="140" height="340" fill="rgba(255,255,255,0.32)" rx="8"/>
+      <rect x="480" y="220" width="120" height="280" fill="rgba(255,255,255,0.22)" rx="6"/>
+    
+    <text x="40" y="550" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="700" fill="#FFFFFF" letter-spacing="0.5">Urban Skyline</text>
+  </svg>

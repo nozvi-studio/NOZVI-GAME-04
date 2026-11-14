@@ -46,7 +46,7 @@ class PlayerProfileDialog extends StatelessWidget {
             final auth = AuthService.instance;
             final progress = ProgressionService.instance;
 
-            final inGameName = auth.displayName;
+            final inGameName = LanguageService.instance.localizeOpponentName(auth.displayName);
             final level = progress.playerLevel;
             final currentXp = progress.currentXP;
             final nextXp = progress.xpRequiredForNextLevel;

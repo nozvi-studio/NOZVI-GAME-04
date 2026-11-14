@@ -1,0 +1,146 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-14T06:38:00.000Z",
+  "title": "Design System: Block Odyssey: Pet Express",
+  "extensions": {
+    "colorMeta": {
+      "park-grass-start": {
+        "role": "surface",
+        "displayName": "Park Grass Top",
+        "canonical": "#88D45E",
+        "tonalRamp": ["#386B20", "#4D852F", "#629E40", "#77B851", "#88D45E", "#A0E07A", "#B9EC9A", "#D3F7BB"]
+      },
+      "park-grass-end": {
+        "role": "surface",
+        "displayName": "Park Grass Base",
+        "canonical": "#5BB344",
+        "tonalRamp": ["#234F18", "#336D25", "#448A33", "#55A742", "#5BB344", "#77C762", "#98DB86", "#BCEEAF"]
+      },
+      "board-wood-outer": {
+        "role": "primary-container",
+        "displayName": "Teak Wood Base",
+        "canonical": "#6D4226",
+        "tonalRamp": ["#2E180D", "#422414", "#57321D", "#6D4226", "#855332", "#9E6641", "#B87A52", "#D39267"]
+      },
+      "corgi-red": {
+        "role": "primary",
+        "displayName": "Corgi Red",
+        "canonical": "#FF6B5B",
+        "tonalRamp": ["#5C130D", "#821E15", "#A82419", "#CF3527", "#E84538", "#FF6B5B", "#FF9E99", "#FFD0CD"]
+      },
+      "cat-yellow": {
+        "role": "secondary",
+        "displayName": "Cat Yellow",
+        "canonical": "#FFD84D",
+        "tonalRamp": ["#614004", "#8A5B07", "#B87D0E", "#D99918", "#F5B727", "#FFD84D", "#FFE685", "#FFF3C2"]
+      },
+      "duck-blue": {
+        "role": "tertiary",
+        "displayName": "Duck Blue",
+        "canonical": "#4FC3F7",
+        "tonalRamp": ["#052C54", "#08427D", "#0D5CA8", "#1474D1", "#1E90FF", "#4FC3F7", "#8BD6FA", "#C2EBFC"]
+      },
+      "rabbit-green": {
+        "role": "accent",
+        "displayName": "Rabbit Green",
+        "canonical": "#81E659",
+        "tonalRamp": ["#113D06", "#1B590B", "#2D8512", "#3DA41B", "#4BC226", "#81E659", "#A8F089", "#D2FABC"]
+      },
+      "fox-orange": {
+        "role": "accent",
+        "displayName": "Fox Orange",
+        "canonical": "#FF9D42",
+        "tonalRamp": ["#4F1E01", "#732F03", "#9E4105", "#C4550C", "#E86F17", "#FF9D42", "#FFBE7D", "#FFE0BC"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display Heavy", "purpose": "Combo scores, big win announcements, and fever streaks." },
+      "headline": { "displayName": "Headline Bold", "purpose": "Screen titles, modal titles, and chapter markers." },
+      "title": { "displayName": "Section Title", "purpose": "Quest card titles, bus line badges, and shop item names." },
+      "body": { "displayName": "Body Sans", "purpose": "Descriptions, tutorial hints, and modal messaging." },
+      "label": { "displayName": "Uppercase Label", "purpose": "Button CTAs, passenger counts, and HUD indicators." }
+    },
+    "shadows": [
+      { "name": "board-chassis", "value": "0 10px 18px rgba(0,0,0,0.33)", "purpose": "Grounding shadow beneath 8x8 wooden tray." },
+      { "name": "block-ambient", "value": "0 4px 6px rgba(0,0,0,0.25)", "purpose": "Soft contact shadow cast by placed polyomino blocks." },
+      { "name": "modal-scrim", "value": "0 20px 40px rgba(0,0,0,0.65)", "purpose": "Deep focus shadow for modal popups." }
+    ],
+    "motion": [
+      { "name": "bezier-jump", "value": "cubic-bezier(0.18, 0.89, 0.32, 1.28)", "purpose": "Parabolic bounce when pets board buses." },
+      { "name": "tray-spring", "value": "cubic-bezier(0.34, 1.56, 0.64, 1)", "purpose": "Elastic scale when 3 new blocks refill into Next tray." },
+      { "name": "bus-departure", "value": "cubic-bezier(0.6, -0.28, 0.735, 0.045)", "purpose": "Engine rumble recoil then fast rightward departure." }
+    ],
+    "breakpoints": [
+      { "name": "compact-phone", "value": "360px" },
+      { "name": "standard-phone", "value": "412px" },
+      { "name": "tablet-portrait", "value": "768px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "2.5D Pet Block",
+      "kind": "custom",
+      "refersTo": "pet-block",
+      "description": "Tactile volumetric pet block with 6px extrusion lip and kawaii facial features.",
+      "html": "<div class=\"ds-pet-block ds-pet-corgi\"><div class=\"ds-block-top\"><div class=\"ds-face-corgi\"></div></div></div>",
+      "css": ".ds-pet-block { position: relative; width: 48px; height: 54px; border-radius: 10px; background: #A82419; }\n.ds-block-top { position: absolute; top: 0; left: 0; width: 48px; height: 48px; border-radius: 10px; background: linear-gradient(180deg, #FF6B5B 0%, #E84538 100%); box-shadow: inset 0 2px 4px rgba(255,255,255,0.4); display: flex; align-items: center; justify-content: center; }"
+    },
+    {
+      "name": "Relic Skill FAB",
+      "kind": "button",
+      "refersTo": "relic-fab",
+      "description": "Circular 56dp action button triggering Hammer of Fire or Compass of Wind.",
+      "html": "<button class=\"ds-relic-btn ds-relic-hammer\">🔥</button>",
+      "css": ".ds-relic-btn { width: 56px; height: 56px; border-radius: 50%; background: #6D4226; border: 3px solid #9E633A; color: #fff; font-size: 24px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; }\n.ds-relic-btn:hover { transform: scale(1.08); box-shadow: 0 0 16px #FF3D00; }"
+    },
+    {
+      "name": "HUD Pill Badge",
+      "kind": "chip",
+      "refersTo": "pill-badge",
+      "description": "Trophy score or passenger counter pill badge.",
+      "html": "<div class=\"ds-hud-pill\"><span class=\"ds-pill-icon\">🏆</span><span class=\"ds-pill-text\">2,450</span></div>",
+      "css": ".ds-hud-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 14px; border-radius: 9999px; background: #263238; border: 1.5px solid #455A64; color: #FFD84D; font-weight: 800; font-size: 13px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Handcrafted Kawaii Toy Diorama",
+    "overview": "Block Odyssey: Pet Express exists in a warm, miniature tactile world evoking a handcrafted wooden puzzle tray placed on the lush grass of a sunny public park. Every element communicates physical mass, polished edges, and tactile delight rather than flat digital minimalism.",
+    "keyCharacteristics": [
+      "Warm Miniature Tactility: Thick beveled wooden board borders, recessed inner shadows, and chunky extrusion lips on every block.",
+      "Organic Character Vitality: 60fps procedural breathing, rhythmic blinking, and parabolic Bezier jumping arcs give life to inanimate blocks.",
+      "Zero-Asset Procedural Autonomy: 100% vector-drawn on Flutter Canvas without external raster sprite sheets.",
+      "Ergonomic Touch Clarity: Negative touch Y-offset (-70dp) guarantees the player's dragging thumb never obscures block geometry."
+    ],
+    "rules": [
+      {
+        "name": "The Volumetric Contrast Rule",
+        "body": "Every pet block and toy bus MUST render a bottom extrusion lip shifted 6px vertically in its assigned dark tonal shade (darkColor). Flat un-extruded shapes are strictly forbidden on the game board.",
+        "section": "colors"
+      },
+      {
+        "name": "The Silhouette Redundancy Rule",
+        "body": "Colors must never be the sole differentiator of pet species. Every pet block must carry a distinctive vector silhouette to guarantee universal colorblind accessibility.",
+        "section": "colors"
+      },
+      {
+        "name": "The Floating Value Rule",
+        "body": "Floating score popups (+150, FEVER!) MUST render with a 2px dark stroke (#263238) or heavy blur shadow to preserve legibility over diverse board colors during rapid combos.",
+        "section": "typography"
+      }
+    ],
+    "dos": [
+      "Do maintain the 6px extrusion lip on every placed and dragging block to preserve the 2.5D toy diorama aesthetic.",
+      "Do apply touchOffsetY = -70.0dp during block drag operations to prevent touch occlusion.",
+      "Do draw facial silhouettes distinctly so colorblind players can identify pet types without relying on color.",
+      "Do execute passenger extraction and boarding via smooth parabolic Bezier curves with pentatonic chime SFX.",
+      "Do keep all interactive buttons at >= 48x48dp touch target sizes on mobile."
+    ],
+    "donts": [
+      "Don't introduce flat unshaded single-color vectors into the game board.",
+      "Don't use external raster bitmap assets (.png, .jpg) for blocks or buses; all assets must be procedurally generated via Canvas.",
+      "Don't allow board cells or HUD text to overflow on compact mobile viewports (minimum target 360x780dp).",
+      "Don't interrupt the 7-step ActionQueue execution sequence while blocks are placing or lines are clearing."
+    ]
+  }
+}
+

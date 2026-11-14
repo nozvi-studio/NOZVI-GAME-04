@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+    <defs>
+      <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#00c6ff" />
+        <stop offset="100%" stop-color="#0072ff" />
+      </linearGradient>
+    </defs>
+    <rect width="800" height="600" fill="url(#grad)" />
+    
+      <circle cx="400" cy="280" r="90" fill="#FFD54F" />
+      <path d="M 100 480 Q 250 420 400 480 T 700 480 L 700 600 L 100 600 Z" fill="rgba(255,255,255,0.22)" />
+    
+    <text x="40" y="550" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="700" fill="#FFFFFF" letter-spacing="0.5">Pacific Horizon</text>
+  </svg>

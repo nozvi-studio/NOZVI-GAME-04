@@ -62,20 +62,26 @@ class _AuthScreenState extends State<AuthScreen> {
     });
 
     final account = _loginAccountController.text.trim();
-    final pass = _loginPasswordController.text;
+    final pass = _loginPasswordController.text.trim();
 
     if (account.isEmpty || pass.isEmpty) {
       setState(() => _errorMessage = 'auth_fill_account_pass'.tr);
       return;
     }
 
-    final error = await AuthService.instance.login(
-      emailOrUsername: account,
-      password: pass,
-    );
+    try {
+      final error = await AuthService.instance.login(
+        emailOrUsername: account,
+        password: pass,
+      );
 
-    if (mounted && error != null) {
-      setState(() => _errorMessage = error);
+      if (mounted && error != null) {
+        setState(() => _errorMessage = error);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _errorMessage = 'auth_fill_account_pass'.tr);
+      }
     }
   }
 
@@ -87,7 +93,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
     final name = _regNameController.text.trim();
     final account = _regAccountController.text.trim();
-    final pass = _regPasswordController.text;
+    final pass = _regPasswordController.text.trim();
 
     if (name.isEmpty || account.isEmpty || pass.isEmpty) {
       setState(() => _errorMessage = 'auth_fill_all'.tr);
@@ -203,38 +209,43 @@ class _AuthScreenState extends State<AuthScreen> {
           children: [
             _build8BallLogo(size: 48),
             const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  '8 POOL MASTER',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 20,
-                    letterSpacing: 1.5,
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF00E676).withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: const Color(0xFF00E676).withValues(alpha: 0.4),
-                    ),
-                  ),
-                  child: Text(
-                    'auth_tagline'.tr,
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    '8 POOL MASTER',
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: Color(0xFF69F0AE),
-                      fontSize: 9,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.8,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 20,
+                      letterSpacing: 1.5,
                     ),
                   ),
-                ),
-              ],
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF00E676).withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: const Color(0xFF00E676).withValues(alpha: 0.4),
+                      ),
+                    ),
+                    child: Text(
+                      'auth_tagline'.tr,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF69F0AE),
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
             const Spacer(),
             InkWell(
