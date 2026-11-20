@@ -2,6 +2,7 @@ name: Deploy Flutter Web
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -9,14 +10,22 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: bida_game
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+      - name: Ensure firebase_options.dart exists
+        run: |
+          if [ ! -f lib/firebase_options.dart ]; then
+            cp lib/firebase_options.dart.example lib/firebase_options.dart
+          fi
       - run: flutter pub get
       - run: flutter build web --release --base-href "/NOZVI-GAME-04/"
       - uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: build/web
+          publish_dir: bida_game/build/web
