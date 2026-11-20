@@ -17,6 +17,7 @@ class PlayerEconomyService extends ChangeNotifier {
   static const String _prefUnlockedSkinsKey = 'player_unlocked_skins';
   static const String _prefHammerUpgradeKey = 'upgrade_hammer_level';
   static const String _prefCompassUpgradeKey = 'upgrade_compass_level';
+  static const String _prefMagnetUpgradeKey = 'upgrade_magnet_level';
   static const String _prefUnlockedLevelKey = 'unlocked_level';
   static const String _prefClaimedChestsKey = 'saga_claimed_chests';
   static const String _prefBgmKey = 'settings_bgm_enabled';
@@ -34,6 +35,7 @@ class PlayerEconomyService extends ChangeNotifier {
 
   int _starterHammerLevel = 0; // Tối đa 3 (mỗi cấp +1 sạc Búa khởi đầu trận)
   int _starterCompassLevel = 0; // Tối đa 2 (mỗi cấp +1 sạc La Bàn khởi đầu trận)
+  int _starterMagnetLevel = 1; // Tối đa 2 (mỗi cấp +1 bán kính nam châm hút khách)
 
   int _unlockedLevel = 1;
   final Map<int, int> _levelStars = {};
@@ -51,8 +53,10 @@ class PlayerEconomyService extends ChangeNotifier {
 
   int get starterHammerLevel => _starterHammerLevel;
   int get starterCompassLevel => _starterCompassLevel;
+  int get starterMagnetLevel => _starterMagnetLevel;
   int get starterHammerCharges => _starterHammerLevel;
   int get starterCompassCharges => _starterCompassLevel;
+  int get starterMagnetCharges => _starterMagnetLevel;
 
   int get unlockedLevel => _unlockedLevel;
   Map<int, int> get levelStars => Map.unmodifiable(_levelStars);
@@ -90,7 +94,12 @@ class PlayerEconomyService extends ChangeNotifier {
 
       _starterHammerLevel = (prefs.getInt(_prefHammerUpgradeKey) ?? 0).clamp(0, 3);
       _starterCompassLevel = (prefs.getInt(_prefCompassUpgradeKey) ?? 0).clamp(0, 2);
+<<<<<<< HEAD
       _unlockedLevel = (prefs.getInt(_prefUnlockedLevelKey) ?? 1).clamp(1, 500);
+=======
+      _starterMagnetLevel = (prefs.getInt(_prefMagnetUpgradeKey) ?? 1).clamp(1, 2);
+      _unlockedLevel = (prefs.getInt(_prefUnlockedLevelKey) ?? 1).clamp(1, 200);
+>>>>>>> 9c029f433040f9f1582aba761103e9d6623e2aeb
 
       _levelStars.clear();
       for (int i = 1; i <= 500; i++) {
@@ -177,6 +186,7 @@ class PlayerEconomyService extends ChangeNotifier {
 
   int getHammerUpgradeCost() => 150 + _starterHammerLevel * 200;
   int getCompassUpgradeCost() => 120 + _starterCompassLevel * 180;
+  int getMagnetUpgradeCost() => 200 + _starterMagnetLevel * 250;
 
   Future<bool> upgradeStarterHammer() async {
     if (_starterHammerLevel >= 3) return false;
@@ -195,6 +205,17 @@ class PlayerEconomyService extends ChangeNotifier {
     if (_coins < cost) return false;
     _coins -= cost;
     _starterCompassLevel++;
+    notifyListeners();
+    await _save();
+    return true;
+  }
+
+  Future<bool> upgradeStarterMagnet() async {
+    if (_starterMagnetLevel >= 2) return false;
+    final cost = getMagnetUpgradeCost();
+    if (_coins < cost) return false;
+    _coins -= cost;
+    _starterMagnetLevel++;
     notifyListeners();
     await _save();
     return true;
@@ -270,6 +291,7 @@ class PlayerEconomyService extends ChangeNotifier {
       );
       await prefs.setInt(_prefHammerUpgradeKey, _starterHammerLevel);
       await prefs.setInt(_prefCompassUpgradeKey, _starterCompassLevel);
+      await prefs.setInt(_prefMagnetUpgradeKey, _starterMagnetLevel);
       await prefs.setInt(_prefUnlockedLevelKey, _unlockedLevel);
       for (final entry in _levelStars.entries) {
         await prefs.setInt('level_stars_${entry.key}', entry.value);

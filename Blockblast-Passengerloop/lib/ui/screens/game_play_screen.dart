@@ -394,6 +394,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                     onTapUp: (details) => _handleTap(details.localPosition, scaler),
                     child: Stack(
                       children: [
+<<<<<<< HEAD
                         // 1. Nền công viên Gradient, Trạm xe buýt 2.5D, Ghế dài Holding Dock & Đường bay Parabol (Tách Layer RepaintBoundary)
                         RepaintBoundary(
                           child: CustomPaint(
@@ -422,6 +423,21 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                                   ? PlayerEconomyService.instance.coins
                                   : 2450,
                             ),
+=======
+                        // 1. Nền công viên Gradient, Trạm xe buýt 2.5D, Ghế dài Holding Dock & Đường bay Parabol
+                        CustomPaint(
+                          size: safeSize,
+                          painter: BusStationPainter(
+                            scaler: scaler,
+                            activeBus: _controller.busStation.activeBus,
+                            nextBus: _controller.busStation.nextBus,
+                            holdingDock: _controller.busStation.holdingDock,
+                            score: _controller.actionQueue.currentScore,
+                            currentLevel: _controller.currentLevel,
+                            flyingPets: _controller.flyingPets,
+                            skin: activeSkin,
+                            winStreak: WinStreakManager.instance.currentStreak,
+>>>>>>> 9c029f433040f9f1582aba761103e9d6623e2aeb
                           ),
                         ),
 
@@ -527,6 +543,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                             ),
                           ),
 
+<<<<<<< HEAD
                         // Hai nút góc trên trái: Tạm dừng (Pause) và Hướng dẫn (?) né biển gỗ Level
                         Positioned(
                           top: 58,
@@ -552,6 +569,20 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                                 },
                               ),
                             ],
+=======
+                        // Nút Tạm dừng / Cài đặt góc trên phải (Khớp hoàn toàn với nút Cúp Vàng "Cài đặt" trong Mockup)
+                        Positioned(
+                          top: 4,
+                          right: 8,
+                          child: GestureDetector(
+                            onTap: _openPauseModal,
+                            behavior: HitTestBehavior.opaque,
+                            child: Container(
+                              width: 44,
+                              height: 44,
+                              color: Colors.transparent,
+                            ),
+>>>>>>> 9c029f433040f9f1582aba761103e9d6623e2aeb
                           ),
                         ),
                       ],
@@ -615,7 +646,11 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
       child: Stack(
         clipBehavior: Clip.none,
         children: [
+<<<<<<< HEAD
           // 1. Chữ "Next" màu trắng to đậm căn giữa phía trên khay gạch chuẩn ảnh mẫu
+=======
+          // Nút Cổ vật trái: Búa Rèn Lửa
+>>>>>>> 9c029f433040f9f1582aba761103e9d6623e2aeb
           Positioned(
             left: trayLeft,
             width: trayWidth,
@@ -662,7 +697,11 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
             height: scaler.hammerButtonRect.height + 24,
             child: _buildSkillButton(
               icon: '🔨',
+<<<<<<< HEAD
               title: 'Búa Rèn Lửa',
+=======
+              title: 'Relics',
+>>>>>>> 9c029f433040f9f1582aba761103e9d6623e2aeb
               charge: _controller.actionQueue.hammerCharge,
               maxCharge: _controller.actionQueue.hammerMaxCharge,
               isActive: _controller.isHammerActive,
@@ -673,12 +712,54 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
             ),
           ),
 
+<<<<<<< HEAD
           // 4. Ba ô khối gạch trong Khay Next
+=======
+          // Khung khay gỗ đựng 3 khối gạch Next (có nhãn "Next" ở giữa)
+          Positioned(
+            left: scaler.traySlotRects[0].left - 6,
+            top: scaler.traySlotRects[0].top - scaler.zoneDRect.top - 8,
+            width: (scaler.traySlotRects[2].right - scaler.traySlotRects[0].left) + 12,
+            height: scaler.traySlotRects[0].height + 14,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFFD49B6A), Color(0xFF9E633A)],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFF5A3317), width: 2.0),
+                boxShadow: const [
+                  BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 3)),
+                ],
+              ),
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 1.0),
+                  child: Text(
+                    'Next',
+                    style: TextStyle(
+                      color: const Color(0xFF4A2810).withValues(alpha: 0.9),
+                      fontSize: 10.0,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // 3 ô khay Next
+>>>>>>> 9c029f433040f9f1582aba761103e9d6623e2aeb
           for (int i = 0; i < 3; i++)
             Positioned(
               left: scaler.traySlotRects[i].left,
-              top: scaler.traySlotRects[i].top - scaler.zoneDRect.top,
+              top: scaler.traySlotRects[i].top - scaler.zoneDRect.top + 4,
               width: scaler.traySlotRects[i].width,
+<<<<<<< HEAD
               height: scaler.traySlotRects[i].height,
               child: Builder(
                 builder: (context) {
@@ -725,6 +806,30 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                                     activeSkin,
                                   ),
                                 ),
+=======
+              height: scaler.traySlotRects[i].height - 6,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4A2810).withValues(alpha: 0.65),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: const Color(0xFF6B3A18).withValues(alpha: 0.8),
+                    width: 1.2,
+                  ),
+                ),
+                child: (_controller.smartSpawner.traySlots[i] != null && _draggingSlotIndex != i)
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(4.0),
+                          child: ScaleTransition(
+                            scale: _trayRefillScale,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: _buildTrayShapeWidget(
+                                _controller.smartSpawner.traySlots[i]!,
+                                scaler.cellSize,
+                                activeSkin,
+>>>>>>> 9c029f433040f9f1582aba761103e9d6623e2aeb
                               ),
                             ),
                           ),
@@ -756,7 +861,11 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
               ),
             ),
 
+<<<<<<< HEAD
           // 5. Nút Kỹ Năng Bên Phải (La Bàn Gió) có quầng hào quang xanh ngọc + nhãn chữ bên dưới
+=======
+          // Nút Cổ vật phải: La Bàn Gió
+>>>>>>> 9c029f433040f9f1582aba761103e9d6623e2aeb
           Positioned(
             left: scaler.compassButtonRect.left - 2,
             top: scaler.compassButtonRect.top - scaler.zoneDRect.top - 4,
@@ -764,7 +873,11 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
             height: scaler.compassButtonRect.height + 24,
             child: _buildSkillButton(
               icon: '🧭',
+<<<<<<< HEAD
               title: 'La Bàn Gió',
+=======
+              title: 'Relics',
+>>>>>>> 9c029f433040f9f1582aba761103e9d6623e2aeb
               charge: _controller.actionQueue.compassCharge,
               maxCharge: _controller.actionQueue.compassMaxCharge,
               isActive: false,
@@ -802,6 +915,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+<<<<<<< HEAD
             // Nút tròn 3D có viền sáng hào quang (Glowing halo ring)
             Container(
               width: 50,
@@ -863,6 +977,54 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 9.5,
+=======
+            Text(
+              title,
+              style: const TextStyle(
+                color: Color(0xFFFFF8E1),
+                fontSize: 8.5,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.4,
+              ),
+            ),
+            const SizedBox(height: 1),
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: isActive
+                      ? [glowColor, const Color(0xFF6D4226)]
+                      : [const Color(0xFFD49B6A), const Color(0xFF8B5A2B)],
+                ),
+                border: Border.all(
+                  color: isReady ? const Color(0xFFFFD54F) : const Color(0xFF5A3317),
+                  width: isReady ? 2.5 : 2.0,
+                ),
+                boxShadow: [
+                  const BoxShadow(color: Colors.black38, blurRadius: 5, offset: Offset(0, 3)),
+                  if (isReady)
+                    BoxShadow(
+                      color: glowColor.withValues(alpha: 0.65),
+                      blurRadius: 10,
+                      spreadRadius: 2,
+                    ),
+                ],
+              ),
+              child: Center(
+                child: Text(icon, style: const TextStyle(fontSize: 20)),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              isReady ? 'SẴN SÀNG' : '$charge/$maxCharge',
+              style: TextStyle(
+                color: isReady ? const Color(0xFFFFD84D) : const Color(0xFFFFF8E1),
+                fontSize: 9.0,
+>>>>>>> 9c029f433040f9f1582aba761103e9d6623e2aeb
                 fontWeight: FontWeight.w900,
                 shadows: [
                   Shadow(color: Colors.black, offset: Offset(0, 1), blurRadius: 2),

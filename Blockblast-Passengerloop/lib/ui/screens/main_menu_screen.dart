@@ -224,35 +224,127 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: Colors.white12, width: 1)),
+      bottomNavigationBar: _buildWoodenToyDock(),
+    );
+  }
+
+  Widget _buildWoodenToyDock() {
+    return Container(
+      height: 72,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFDE9F67), Color(0xFFA66436), Color(0xFF6E3F1F)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
         ),
-        child: BottomNavigationBar(
-          type: BottomNavigationBarType.fixed,
-          currentIndex: _selectedTabIndex,
-          onTap: (index) => setState(() => _selectedTabIndex = index),
-          backgroundColor: const Color(0xFF1E282D),
-          selectedItemColor: const Color(0xFFFFD84D),
-          unselectedItemColor: Colors.white54,
-          selectedFontSize: 11,
-          unselectedFontSize: 10,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.store_rounded),
-              label: 'Cửa Hàng',
+        boxShadow: [
+          BoxShadow(color: Color(0x60000000), offset: Offset(0, -3), blurRadius: 6),
+        ],
+        border: Border(top: BorderSide(color: Color(0xFF4A2610), width: 2.5)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            // Tab 0: Chơi ngay (Bus)
+            _buildDockItem(
+              iconEmoji: '🚌',
+              label: 'Bus',
+              isSelected: false,
+              onTap: () => widget.onSelectLevel(PlayerEconomyService.instance.unlockedLevel),
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.map_rounded),
-              label: 'Bản Đồ',
+
+            // Tab 1: Bản Đồ (Map)
+            _buildDockItem(
+              iconEmoji: '🗺️',
+              label: 'Map',
+              isSelected: _selectedTabIndex == 1,
+              onTap: () => setState(() => _selectedTabIndex = 1),
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.pets_rounded),
-              label: 'Đảo Thú',
+
+            // Tab 2: Cửa Hàng (Shop & Corgi)
+            _buildDockItem(
+              iconEmoji: '🐶',
+              label: 'Shop',
+              isSelected: _selectedTabIndex == 0,
+              isProminent: true,
+              onTap: () => setState(() => _selectedTabIndex = 0),
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.emoji_events_rounded),
-              label: 'Đua Top',
+
+            // Tab 3: Đảo Thú Cưng (Sanctuary)
+            _buildDockItem(
+              iconEmoji: '🏠',
+              label: 'Sanctuary',
+              isSelected: _selectedTabIndex == 2,
+              onTap: () => setState(() => _selectedTabIndex = 2),
+            ),
+
+            // Tab 4: Đua Top / Quests
+            _buildDockItem(
+              iconEmoji: '🏆',
+              label: 'Quests',
+              isSelected: _selectedTabIndex == 3,
+              onTap: () => setState(() => _selectedTabIndex = 3),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDockItem({
+    required String iconEmoji,
+    required String label,
+    required bool isSelected,
+    bool isProminent = false,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: EdgeInsets.symmetric(horizontal: isSelected ? 12 : 8, vertical: 4),
+        decoration: isSelected
+            ? BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFFD54F), Color(0xFFFF9800)],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white, width: 2),
+                boxShadow: const [
+                  BoxShadow(color: Color(0x40000000), offset: Offset(0, 3), blurRadius: 4),
+                ],
+              )
+            : (isProminent
+                ? BoxDecoration(
+                    color: const Color(0xFF8D5531),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFF4A250B), width: 1.5),
+                  )
+                : null),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              iconEmoji,
+              style: TextStyle(fontSize: isSelected ? 22 : 20),
+            ),
+            const SizedBox(height: 1),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? const Color(0xFF3B2314) : const Color(0xFFFFF7D6),
+                fontWeight: isSelected ? FontWeight.w900 : FontWeight.bold,
+                fontSize: 10,
+                shadows: isSelected
+                    ? null
+                    : const [Shadow(color: Color(0xFF4A250B), offset: Offset(0, 1), blurRadius: 1)],
+              ),
             ),
           ],
         ),
@@ -263,15 +355,32 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
   Widget _buildTopBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      color: const Color(0xFF263238),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFDE9F67), Color(0xFFA66436)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+        border: Border(bottom: BorderSide(color: Color(0xFF542E13), width: 2)),
+        boxShadow: [
+          BoxShadow(color: Color(0x40000000), offset: Offset(0, 2), blurRadius: 4),
+        ],
+      ),
       child: Row(
         children: [
           GestureDetector(
             onTap: _showLoginDialog,
-            child: const CircleAvatar(
-              backgroundColor: Color(0xFFE84538),
-              radius: 15,
-              child: Text('🐶', style: TextStyle(fontSize: 15)),
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 1.5),
+              ),
+              child: const CircleAvatar(
+                backgroundColor: Color(0xFFE84538),
+                radius: 14,
+                child: Text('🐶', style: TextStyle(fontSize: 14)),
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -285,22 +394,28 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                     _username,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12.5),
+                    style: const TextStyle(
+                      color: Color(0xFFFFF9E6),
+                      fontWeight: FontWeight.w900,
+                      fontSize: 12.5,
+                      shadows: [Shadow(color: Color(0xFF4A250B), offset: Offset(0, 1), blurRadius: 1)],
+                    ),
                   ),
                   Text(
-                    _isGuest ? 'Chạm để đồng bộ' : 'Cloud Synced',
+                    _isGuest ? 'Chạm để đồng bộ' : 'Cloud Synced ✓',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: _isGuest ? Colors.white54 : const Color(0xFF81E659),
+                      color: _isGuest ? const Color(0xFFFFF176) : const Color(0xFFB9F6CA),
                       fontSize: 10,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
               ),
             ),
           ),
-          // Ví Xu Vàng & Ngọc
+          // Ví Xu Vàng & Ngọc dạng Viên Nhộng 3D chuẩn Mockup
           ListenableBuilder(
             listenable: PlayerEconomyService.instance,
             builder: (context, _) {
@@ -308,41 +423,46 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
               return Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _buildWalletPill('🪙', '${eco.coins}', const Color(0xFFFFD84D)),
+                  _buildWalletPill('🪙', '${eco.coins}', const Color(0xFFFFD54F), const Color(0xFFFF8F00)),
                   const SizedBox(width: 5),
-                  _buildWalletPill('💎', '${eco.gems}', const Color(0xFF4FC3F7)),
+                  _buildWalletPill('💎', '${eco.gems}', const Color(0xFF81D4FA), const Color(0xFF0288D1)),
                 ],
               );
             },
           ),
           const SizedBox(width: 5),
-          // Huy hiệu Super Bus Streak
+          // Huy hiệu Win Streak ngọn lửa
           ListenableBuilder(
             listenable: WinStreakManager.instance,
             builder: (context, _) {
               final streak = WinStreakManager.instance;
               return InkWell(
                 onTap: _showStreakInfoDialog,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
                   decoration: BoxDecoration(
-                    color: streak.streakCount > 0 ? const Color(0xFFE86F17).withValues(alpha: 0.3) : Colors.black26,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: streak.streakCount > 0 ? const Color(0xFFFFD84D) : Colors.white24,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFFB74D), Color(0xFFE65100)],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
                     ),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.white, width: 1.5),
+                    boxShadow: const [
+                      BoxShadow(color: Color(0x40000000), offset: Offset(0, 2), blurRadius: 3),
+                    ],
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text('🔥', style: TextStyle(fontSize: 12)),
+                      const Text('🔥', style: TextStyle(fontSize: 13)),
                       const SizedBox(width: 2),
                       Text(
-                        '${streak.streakCount}',
-                        style: TextStyle(
-                          color: streak.streakCount > 0 ? const Color(0xFFFFD84D) : Colors.white54,
-                          fontWeight: FontWeight.bold,
+                        'x${streak.streakCount}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
                           fontSize: 11,
                         ),
                       ),
@@ -357,22 +477,30 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     );
   }
 
-  Widget _buildWalletPill(String emoji, String text, Color accent) {
+  Widget _buildWalletPill(String emoji, String text, Color c1, Color c2) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
       decoration: BoxDecoration(
-        color: Colors.black26,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: accent.withValues(alpha: 0.55)),
+        gradient: LinearGradient(colors: [c1, c2], begin: Alignment.topCenter, end: Alignment.bottomCenter),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white, width: 1.4),
+        boxShadow: const [
+          BoxShadow(color: Color(0x35000000), offset: Offset(0, 2), blurRadius: 2.5),
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 11.5)),
+          Text(emoji, style: const TextStyle(fontSize: 12)),
           const SizedBox(width: 3),
           Text(
             text,
-            style: TextStyle(color: accent, fontWeight: FontWeight.w900, fontSize: 11),
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+              fontSize: 11,
+              shadows: [Shadow(color: Colors.black38, offset: Offset(0, 1), blurRadius: 1)],
+            ),
           ),
         ],
       ),

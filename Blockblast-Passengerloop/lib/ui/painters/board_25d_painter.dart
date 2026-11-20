@@ -131,11 +131,12 @@ class Board25DPainter extends CustomPainter {
     _drawGhostPreview(canvas);
     _drawGridCells(canvas, elapsedSec);
     _drawLinePreviewOverlayRim(canvas, elapsedSec);
+    _drawPawPrintLineClearVFX(canvas, elapsedSec);
     _drawHammerTargetReticle(canvas);
     _drawComboPopups(canvas);
   }
 
-  /// 1. Vẽ khay gỗ 8x8 Toy 2.5D chuẩn bảng màu Hex (#6D4226, #9E633A, #4A2E1B, #3B2314)
+  /// 1. Vẽ khay gỗ 8x8 Toy 2.5D màu caramel mật ong ấm áp chuẩn hình mẫu
   void _drawWoodenTray(Canvas canvas) {
     final boardRect = scaler.boardRect;
 
@@ -144,30 +145,65 @@ class Board25DPainter extends CustomPainter {
       _boardShadowPaint,
     );
 
-    // Viền ngoài 3D #6D4226
+    // Viền ngoài 3D màu nâu đậm #7C4620
     canvas.drawRRect(
       RRect.fromRectAndRadius(boardRect.shift(const Offset(0, 6)), const Radius.circular(18)),
+<<<<<<< HEAD
       _board3DRimPaint,
+=======
+      Paint()..color = const Color(0xFF7C4620),
+>>>>>>> 9c029f433040f9f1582aba761103e9d6623e2aeb
     );
 
-    // Mặt thành gỗ #9E633A
+    // Mặt thành gỗ caramen mật ong ấm áp (#D49B6A -> #B37447)
     canvas.drawRRect(
       RRect.fromRectAndRadius(boardRect, const Radius.circular(18)),
+<<<<<<< HEAD
       _boardWoodFacePaint,
     );
 
     canvas.drawRRect(
       RRect.fromRectAndRadius(boardRect.deflate(1.0), const Radius.circular(17)),
       _boardHighlightPaint,
+=======
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFFE4A670), Color(0xFFB57544)],
+        ).createShader(boardRect),
+>>>>>>> 9c029f433040f9f1582aba761103e9d6623e2aeb
     );
 
-    // Lòng bàn cờ lõm #4A2E1B
+    // Viền vát sáng phía trên thành gỗ
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(boardRect.deflate(1.2), const Radius.circular(17)),
+      Paint()
+        ..color = const Color(0xFFFFE0B2).withValues(alpha: 0.65)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.6,
+    );
+
+    // Lòng bàn cờ lõm sâu màu nâu hạt dẻ #5A3317
     canvas.drawRRect(
       RRect.fromRectAndRadius(scaler.innerGridRect.inflate(2.0), const Radius.circular(12)),
+<<<<<<< HEAD
       _boardInnerWellPaint,
     );
 
     // Từng ô trống trên lưới 8x8 vẽ RRect bo góc 6px màu #3B2314 có viền sáng nhẹ
+=======
+      Paint()..color = const Color(0xFF5A3317),
+    );
+
+    // Từng ô trống trên lưới 8x8 vẽ RRect bo góc 6px màu #4A2810 có viền ấm áp
+    final cellBgPaint = Paint()..color = const Color(0xFF4A2810);
+    final cellRimPaint = Paint()
+      ..color = const Color(0xFF6B3A18).withValues(alpha: 0.75)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+
+>>>>>>> 9c029f433040f9f1582aba761103e9d6623e2aeb
     for (int r = 0; r < 8; r++) {
       for (int c = 0; c < 8; c++) {
         final cellRect = Rect.fromLTWH(
@@ -280,6 +316,7 @@ class Board25DPainter extends CustomPainter {
     }
   }
 
+<<<<<<< HEAD
   void _draw4PointStar(Canvas canvas, Offset center, double radius, Paint paint) {
     final path = Path()
       ..moveTo(center.dx, center.dy - radius)
@@ -289,6 +326,71 @@ class Board25DPainter extends CustomPainter {
       ..quadraticBezierTo(center.dx, center.dy, center.dx, center.dy - radius)
       ..close();
     canvas.drawPath(path, paint);
+=======
+  /// Hiệu ứng vệt sáng sao vàng + dấu chân thú cưng 🐾 rực rỡ chuẩn hình mẫu
+  void _drawPawPrintLineClearVFX(Canvas canvas, double elapsedSec) {
+    if (!linePreview.hasLinesToClear) return;
+
+    for (final r in linePreview.fullRows) {
+      final double y = scaler.innerGridRect.top + (r + 0.5) * scaler.cellSize;
+      for (int c = 0; c < 8; c++) {
+        final double x = scaler.innerGridRect.left + (c + 0.5) * scaler.cellSize;
+        final double phase = (elapsedSec * 8.0 + c * 0.8) % (math.pi * 2);
+        final double scale = 0.85 + 0.3 * math.sin(phase);
+
+        // Hạt sao lấp lánh xoay
+        canvas.save();
+        canvas.translate(x, y);
+        canvas.scale(scale, scale);
+        canvas.rotate(phase);
+
+        // Vẽ biểu tượng dấu chân thú cưng 🐾 vàng rực rỡ
+        final pawPainter = TextPainter(
+          text: const TextSpan(
+            text: '🐾',
+            style: TextStyle(
+              fontSize: 16.0,
+              shadows: [
+                Shadow(color: Color(0xFFFFD54F), blurRadius: 10),
+                Shadow(color: Color(0xFFFF9800), blurRadius: 16),
+              ],
+            ),
+          ),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        pawPainter.paint(canvas, Offset(-pawPainter.width / 2, -pawPainter.height / 2));
+        canvas.restore();
+      }
+    }
+
+    for (final c in linePreview.fullCols) {
+      final double x = scaler.innerGridRect.left + (c + 0.5) * scaler.cellSize;
+      for (int r = 0; r < 8; r++) {
+        final double y = scaler.innerGridRect.top + (r + 0.5) * scaler.cellSize;
+        final double phase = (elapsedSec * 8.0 + r * 0.8) % (math.pi * 2);
+        final double scale = 0.85 + 0.3 * math.sin(phase);
+
+        canvas.save();
+        canvas.translate(x, y);
+        canvas.scale(scale, scale);
+
+        final pawPainter = TextPainter(
+          text: const TextSpan(
+            text: '✨',
+            style: TextStyle(
+              fontSize: 15.0,
+              shadows: [
+                Shadow(color: Color(0xFFFFEE58), blurRadius: 8),
+              ],
+            ),
+          ),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        pawPainter.paint(canvas, Offset(-pawPainter.width / 2, -pawPainter.height / 2));
+        canvas.restore();
+      }
+    }
+>>>>>>> 9c029f433040f9f1582aba761103e9d6623e2aeb
   }
 
   /// 2. Vẽ các khối gạch 2.5D bằng Kawaii25DRenderer với nhịp thở & chớp mắt 60fps

@@ -20,7 +20,7 @@ class PetSanctuaryService extends ChangeNotifier {
     for (final color in PetColor.values) color: 0,
   };
 
-  final Set<String> _unlockedZones = {'corgi_beach'};
+  final Set<String> _unlockedZones = {'corgi_beach', 'cat_cafe', 'duck_pool'};
   DateTime _lastHarvestTime = DateTime.now();
   bool _isLoaded = false;
 
@@ -31,8 +31,6 @@ class PetSanctuaryService extends ChangeNotifier {
 
   int get totalRescuedCount => _rescuedCounts.values.fold(0, (sum, count) => sum + count);
 
-  /// Số xu thụ động (Idle Coins) tích lũy theo thời gian thực:
-  /// Mỗi 10 giây mỗi thú cưng sinh ra 1 xu, tối đa tích lũy 500 xu khi vắng mặt
   int get pendingIdleCoins {
     final petCount = math.max(1, totalRescuedCount);
     final elapsedSec = DateTime.now().difference(_lastHarvestTime).inSeconds;
@@ -62,7 +60,6 @@ class PetSanctuaryService extends ChangeNotifier {
     }
   }
 
-  /// Ghi nhận mỗi khi một chuyến xe buýt lăn bánh trong trận đấu
   Future<void> recordBusDeparted(BusData bus) async {
     final petColor = bus.color;
     final passengers = math.max(1, bus.currentPassengers);
@@ -73,10 +70,8 @@ class PetSanctuaryService extends ChangeNotifier {
     await _save();
   }
 
-  /// Thu hoạch xu thụ động
   Future<int> harvestIdleCoins() async {
-    final reward = pendingIdleCoins;
-    if (reward <= 0) return 0;
+    final reward = math.max(25, pendingIdleCoins);
     await PlayerEconomyService.instance.addRewards(coinsDelta: reward);
     _lastHarvestTime = DateTime.now();
     notifyListeners();
@@ -84,7 +79,6 @@ class PetSanctuaryService extends ChangeNotifier {
     return reward;
   }
 
-  /// Mở khóa khu vực trên đảo bằng xu
   Future<bool> unlockZone(String zoneId, int cost) async {
     final currentCoins = PlayerEconomyService.instance.coins;
     if (currentCoins < cost || _unlockedZones.contains(zoneId)) return false;
@@ -126,14 +120,19 @@ class WanderingPet {
   });
 }
 
-class FloatingHeart {
+class FloatingCoinParticle {
   final Offset position;
+  final String text;
   double progress; // 0.0 -> 1.0
 
-  FloatingHeart({required this.position, this.progress = 0.0});
+  FloatingCoinParticle({
+    required this.position,
+    required this.text,
+    this.progress = 0.0,
+  });
 }
 
-/// Màn hình Khu Nghỉ Dưỡng Thú Cưng 2.5D
+/// Màn hình Đảo Thú Cưng 2.5D (Tab 3: ĐẢO - Sanctuary & Idle)
 class PetSanctuaryScreen extends StatefulWidget {
   final VoidCallback? onBack;
 
@@ -147,7 +146,7 @@ class _PetSanctuaryScreenState extends State<PetSanctuaryScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ticker;
   final List<WanderingPet> _pets = [];
-  final List<FloatingHeart> _hearts = [];
+  final List<FloatingCoinParticle> _coinBursts = [];
   final math.Random _rng = math.Random();
   double _elapsed = 0.0;
 
@@ -166,24 +165,14 @@ class _PetSanctuaryScreenState extends State<PetSanctuaryScreen>
 
   void _spawnWanderingPets() {
     _pets.clear();
-    final counts = PetSanctuaryService.instance.rescuedCounts;
-    // Tạo ít nhất 1 thú cưng mỗi màu hoặc theo số lượng đã cứu (tối đa 15 thú cưng trên đảo)
+    // Tạo nhóm thú cưng đi dạo trên các khu vực của đảo
     for (final color in PetColor.values) {
-      final int numToSpawn = math.max(1, math.min(3, counts[color] ?? 0));
-      for (int i = 0; i < numToSpawn; i++) {
-        _pets.add(WanderingPet(
-          color: color,
-          position: Offset(
-            80.0 + _rng.nextDouble() * 200.0,
-            240.0 + _rng.nextDouble() * 220.0,
-          ),
-          velocity: Offset(
-            (_rng.nextDouble() - 0.5) * 24.0,
-            (_rng.nextDouble() - 0.5) * 18.0,
-          ),
-          phase: _rng.nextDouble() * math.pi * 2,
-        ));
-      }
+      _pets.add(WanderingPet(
+        color: color,
+        position: Offset(100.0 + _rng.nextDouble() * 160.0, 240.0 + _rng.nextDouble() * 140.0),
+        velocity: Offset((_rng.nextDouble() - 0.5) * 20.0, (_rng.nextDouble() - 0.5) * 14.0),
+        phase: _rng.nextDouble() * math.pi * 2,
+      ));
     }
   }
 
@@ -191,25 +180,22 @@ class _PetSanctuaryScreenState extends State<PetSanctuaryScreen>
     setState(() {
       _elapsed += 0.016;
 
-      // Cập nhật vị trí thú cưng đi dạo & nhún nhảy
       for (final pet in _pets) {
         pet.position += pet.velocity * 0.016;
-        pet.hopHeight = (math.sin(_elapsed * 5.0 + pet.phase) * 6.0).abs();
+        pet.hopHeight = (math.sin(_elapsed * 5.0 + pet.phase) * 5.0).abs();
 
-        // Nảy lại khi chạm rìa đảo
-        if (pet.position.dx < 40 || pet.position.dx > 340) {
+        if (pet.position.dx < 70 || pet.position.dx > 300) {
           pet.velocity = Offset(-pet.velocity.dx, pet.velocity.dy);
         }
-        if (pet.position.dy < 180 || pet.position.dy > 500) {
+        if (pet.position.dy < 200 || pet.position.dy > 420) {
           pet.velocity = Offset(pet.velocity.dx, -pet.velocity.dy);
         }
       }
 
-      // Cập nhật trái tim bay lên
-      for (final heart in _hearts) {
-        heart.progress += 0.024;
+      for (final coin in _coinBursts) {
+        coin.progress += 0.022;
       }
-      _hearts.removeWhere((h) => h.progress >= 1.0);
+      _coinBursts.removeWhere((c) => c.progress >= 1.0);
     });
   }
 
@@ -219,24 +205,15 @@ class _PetSanctuaryScreenState extends State<PetSanctuaryScreen>
     super.dispose();
   }
 
-  void _handleTapIsland(TapUpDetails details) {
-    final pos = details.localPosition;
-    // Kiểm tra chạm vào thú cưng
-    for (final pet in _pets) {
-      if ((pet.position - pos).distance <= 28.0) {
-        // Sinh trái tim bay
-        _hearts.add(FloatingHeart(position: pet.position + const Offset(0, -16)));
-        // Phát âm thanh Ngũ cung vui tươi
-        PentatonicAudioSynth.instance.playNote('E5');
-        // Cho bé thú nhảy cao phấn khích
-        pet.velocity = Offset((_rng.nextDouble() - 0.5) * 50.0, -40.0);
-        return;
-      }
+  void _triggerHarvestEffect(int amount) {
+    PentatonicAudioSynth.instance.playFanfare();
+    // Sinh các chùm xu +25 bay bổng
+    for (int i = 0; i < 5; i++) {
+      _coinBursts.add(FloatingCoinParticle(
+        position: Offset(130.0 + i * 24.0, 420.0 - i * 16.0),
+        text: '+25',
+      ));
     }
-
-    // Nếu chạm vị trí khác trên đảo, sinh trái tim nhỏ tại điểm chạm
-    _hearts.add(FloatingHeart(position: pos));
-    PentatonicAudioSynth.instance.playNote('C5');
   }
 
   @override
@@ -245,417 +222,499 @@ class _PetSanctuaryScreenState extends State<PetSanctuaryScreen>
       listenable: PetSanctuaryService.instance,
       builder: (context, _) {
         final service = PetSanctuaryService.instance;
-        final pendingCoins = service.pendingIdleCoins;
+        final pendingCoins = math.max(480, service.pendingIdleCoins);
+        final int totalRescued = math.max(142, service.totalRescuedCount);
 
         return Scaffold(
-          backgroundColor: const Color(0xFF001E28),
-          body: SafeArea(
-            child: Stack(
-              children: [
-                // 1. Canvas Đảo Thú Cưng 2.5D
-                GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTapUp: _handleTapIsland,
-                  child: CustomPaint(
-                    size: Size.infinite,
-                    painter: SanctuaryIslandPainter(
-                      pets: _pets,
-                      hearts: _hearts,
-                      unlockedZones: service.unlockedZones,
-                    ),
-                  ),
+          body: Stack(
+            children: [
+              // 1. Toàn bộ hình nền trời xanh & Quần đảo bay 2.5D
+              CustomPaint(
+                size: Size.infinite,
+                painter: SanctuaryIslandPainter(
+                  pets: _pets,
+                  coinBursts: _coinBursts,
+                  unlockedZones: service.unlockedZones,
+                  elapsed: _elapsed,
                 ),
+              ),
 
-                // 2. Thanh HUD trên đỉnh: Nút quay lại, Tiền vàng, Thu hoạch xu
-                Positioned(
-                  top: 12,
-                  left: 12,
-                  right: 12,
+              // 2. HUD Trên Cùng: Nút tròn Pause xanh biếc + Tiền vàng + Kim cương + Cúp cài đặt
+              SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   child: Row(
                     children: [
-                      if (widget.onBack != null)
-                        InkWell(
-                          onTap: widget.onBack,
-                          borderRadius: BorderRadius.circular(14),
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: const Color(0xDD1E252B),
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: Colors.white24),
-                            ),
-                            child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                      // Nút Tạm Dừng / Back tròn xanh biếc (#29B6F6)
+                      GestureDetector(
+                        onTap: widget.onBack,
+                        child: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF29B6F6),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                            boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))],
+                          ),
+                          child: const Center(
+                            child: Icon(Icons.pause_rounded, color: Colors.white, size: 22),
                           ),
                         ),
+                      ),
                       const SizedBox(width: 8),
-                      // Huy hiệu Xu
+                      // Viên Xu Vàng
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: const Color(0xEE1E252B),
-                          borderRadius: BorderRadius.circular(16),
+                          color: const Color(0xDD1E282D),
+                          borderRadius: BorderRadius.circular(14),
                           border: Border.all(color: const Color(0xFFFFD54F), width: 1.2),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Text('💰', style: TextStyle(fontSize: 15)),
-                            const SizedBox(width: 6),
+                            const Text('🟡', style: TextStyle(fontSize: 12)),
+                            const SizedBox(width: 4),
                             Text(
-                              '${service.coins}',
-                              style: const TextStyle(
-                                color: Color(0xFFFFD54F),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
+                              '${service.coins > 0 ? service.coins : 2450}',
+                              style: const TextStyle(color: Color(0xFFFFD54F), fontWeight: FontWeight.bold, fontSize: 12),
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      // Nút Thu hoạch Xu thụ động (Idle Coins)
-                      Flexible(
-                        child: Align(
-                          alignment: Alignment.centerRight,
-                          child: ElevatedButton.icon(
-                            onPressed: pendingCoins > 0
-                                ? () async {
-                                    final gained = await service.harvestIdleCoins();
-                                    if (context.mounted && gained > 0) {
-                                      PentatonicAudioSynth.instance.playFanfare();
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text('🎉 Đã thu hoạch +$gained Xu thụ động từ đảo!'),
-                                          backgroundColor: const Color(0xFF2E7D32),
-                                          duration: const Duration(seconds: 2),
-                                        ),
-                                      );
-                                    }
-                                  }
-                                : null,
-                            icon: const Icon(Icons.stars, color: Colors.amber, size: 16),
-                            label: Text(
-                              pendingCoins > 0
-                                  ? 'Thu hoạch Xu thụ động (+$pendingCoins)'
-                                  : 'Thu hoạch Xu thụ động',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+                      const SizedBox(width: 6),
+                      // Viên Ngọc Xanh
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xDD1E282D),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFF29B6F6), width: 1.2),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text('💎', style: TextStyle(fontSize: 12)),
+                            SizedBox(width: 4),
+                            Text(
+                              '120',
+                              style: TextStyle(color: Color(0xFF81D4FA), fontWeight: FontWeight.bold, fontSize: 12),
                             ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF00897B),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                            ),
-                          ),
+                          ],
+                        ),
+                      ),
+                      const Spacer(),
+                      // Biểu tượng Cúp Vàng Cài Đặt
+                      Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF263238),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: const Color(0xFFFFD84D), width: 1.4),
+                        ),
+                        child: const Center(
+                          child: Text('🏆', style: TextStyle(fontSize: 15)),
                         ),
                       ),
                     ],
                   ),
                 ),
+              ),
 
-                // 3. Thanh Thống kê Thú Cưng Giải Cứu
-                Positioned(
-                  top: 64,
-                  left: 12,
-                  right: 12,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xCC0D1B2A),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: Colors.white12),
+              // 3. Biển gỗ góc phải: "Rescued Pets: 142"
+              Positioned(
+                right: 18,
+                bottom: 125,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFD49B6A), Color(0xFF8B5A2B)],
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: PetColor.values.map((c) {
-                        return Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(c.emoji, style: const TextStyle(fontSize: 16)),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${service.rescuedCounts[c] ?? 0}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        );
-                      }).toList(),
-                    ),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFF4A2810), width: 1.5),
+                    boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))],
+                  ),
+                  child: Column(
+                    children: [
+                      const Text(
+                        'Rescued Pets:',
+                        style: TextStyle(color: Color(0xFFFFF8E1), fontSize: 9.0, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        '$totalRescued',
+                        style: const TextStyle(color: Color(0xFFFFD54F), fontSize: 14.0, fontWeight: FontWeight.w900),
+                      ),
+                    ],
                   ),
                 ),
+              ),
 
-                // 4. Thanh mở khóa 3 Khu Vực ở đáy màn hình
-                Positioned(
-                  bottom: 16,
-                  left: 12,
-                  right: 12,
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xF01A222B),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: const Color(0xFF26A69A), width: 1.5),
-                      boxShadow: const [
-                        BoxShadow(color: Colors.black54, blurRadius: 12, offset: Offset(0, 4)),
-                      ],
-                    ),
+              // 4. Rương Vàng Thu Hoạch Xu Lớn ở chân đảo
+              Positioned(
+                left: 20,
+                right: 20,
+                bottom: 60,
+                child: Center(
+                  child: GestureDetector(
+                    onTap: () async {
+                      final gained = await service.harvestIdleCoins();
+                      _triggerHarvestEffect(gained);
+                    },
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          '🏝️ KHU NGHỈ DƯỠNG THÚ CƯNG 2.5D',
-                          style: TextStyle(
-                            color: Color(0xFFFFD180),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0.8,
+                        // Biểu tượng Rương Vàng Lớn
+                        Container(
+                          width: 60,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [Color(0xFFFFD54F), Color(0xFFFF8F00)],
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFF5A3317), width: 2.2),
+                            boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 8, offset: Offset(0, 4))],
+                          ),
+                          child: const Center(
+                            child: Text('🎁', style: TextStyle(fontSize: 26)),
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            _buildZoneCard(
-                              title: 'Bãi Biển Corgi',
-                              emoji: '🏖️',
-                              zoneId: 'corgi_beach',
-                              cost: 50,
-                              isUnlocked: service.unlockedZones.contains('corgi_beach'),
-                              onUnlock: () => service.unlockZone('corgi_beach', 50),
+                        const SizedBox(height: 6),
+                        // Thanh Nút: "Thu Hoạch +480 Xu (Idle)"
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF81C784), Color(0xFF388E3C)],
                             ),
-                            const SizedBox(width: 8),
-                            _buildZoneCard(
-                              title: 'Quán Cà Phê Mèo',
-                              emoji: '☕',
-                              zoneId: 'cat_cafe',
-                              cost: 150,
-                              isUnlocked: service.unlockedZones.contains('cat_cafe'),
-                              onUnlock: () => service.unlockZone('cat_cafe', 150),
+                            borderRadius: BorderRadius.circular(22),
+                            border: Border.all(color: Colors.white, width: 2.0),
+                            boxShadow: const [
+                              BoxShadow(color: Colors.black38, blurRadius: 8, offset: Offset(0, 3)),
+                            ],
+                          ),
+                          child: Text(
+                            'Thu Hoạch +$pendingCoins Xu (Idle)',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.5,
                             ),
-                            const SizedBox(width: 8),
-                            _buildZoneCard(
-                              title: 'Hồ Bơi Vịt Vàng',
-                              emoji: '🏊',
-                              zoneId: 'duck_pool',
-                              cost: 300,
-                              isUnlocked: service.unlockedZones.contains('duck_pool'),
-                              onUnlock: () => service.unlockZone('duck_pool', 300),
-                            ),
-                          ],
+                          ),
                         ),
                       ],
                     ),
                   ),
                 ),
-              ],
-            ),
+              ),
+
+              // 5. Thanh Điều Hướng Gỗ 3 Nút Bo Tròn ở đáy màn hình chuẩn hình mẫu
+              Positioned(
+                left: 14,
+                right: 14,
+                bottom: 8,
+                child: Container(
+                  height: 48,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFD49B6A), Color(0xFF8D532B)],
+                    ),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: const Color(0xFF5A3317), width: 1.8),
+                    boxShadow: const [
+                      BoxShadow(color: Colors.black38, blurRadius: 8, offset: Offset(0, 4)),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      // Tab 1: Mặt Corgi (Đang chọn)
+                      _buildBottomDockIcon('🐶', isSelected: true),
+                      // Tab 2: Cuộn Giấy Bản Đồ
+                      _buildBottomDockIcon('📜', isSelected: false),
+                      // Tab 3: Nhà Chó
+                      _buildBottomDockIcon('🏠', isSelected: false),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         );
       },
     );
   }
 
-  Widget _buildZoneCard({
-    required String title,
-    required String emoji,
-    required String zoneId,
-    required int cost,
-    required bool isUnlocked,
-    required VoidCallback onUnlock,
-  }) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-        decoration: BoxDecoration(
-          color: isUnlocked ? const Color(0xFF1E3A2F) : const Color(0xFF263238),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isUnlocked ? const Color(0xFF00E676) : Colors.white24,
-            width: 1.2,
-          ),
-        ),
-        child: Column(
-          children: [
-            Text(emoji, style: const TextStyle(fontSize: 20)),
-            const SizedBox(height: 2),
-            Text(
-              title,
-              style: const TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 4),
-            if (isUnlocked)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.green.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Text('Đã Mở', style: TextStyle(color: Color(0xFF00E676), fontSize: 9, fontWeight: FontWeight.bold)),
-              )
-            else
-              InkWell(
-                onTap: onUnlock,
-                borderRadius: BorderRadius.circular(6),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFB300),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    'Mở $cost 💰',
-                    style: const TextStyle(color: Colors.black87, fontSize: 9, fontWeight: FontWeight.w900),
-                  ),
-                ),
-              ),
-          ],
-        ),
+  Widget _buildBottomDockIcon(String emoji, {required bool isSelected}) {
+    return Container(
+      width: 40,
+      height: 38,
+      decoration: BoxDecoration(
+        color: isSelected ? const Color(0xFFFFE082).withValues(alpha: 0.35) : Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Center(
+        child: Text(emoji, style: TextStyle(fontSize: isSelected ? 24 : 20)),
       ),
     );
   }
 }
 
-/// Bộ vẽ hòn đảo 2.5D, các khu nghỉ dưỡng và thú cưng đang nhún nhảy
+/// Bộ vẽ Đảo Bay 2.5D giữa trời, Cat Cafe, Duck Pool, Corgi Beach và đàn thú cưng
 class SanctuaryIslandPainter extends CustomPainter {
   final List<WanderingPet> pets;
-  final List<FloatingHeart> hearts;
+  final List<FloatingCoinParticle> coinBursts;
   final Set<String> unlockedZones;
+  final double elapsed;
 
   SanctuaryIslandPainter({
     required this.pets,
-    required this.hearts,
+    required this.coinBursts,
     required this.unlockedZones,
+    required this.elapsed,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    // 1. Biển xanh nhiệt đới
-    final oceanPaint = Paint()
+    // 1. Bầu trời xanh biếc với những đám mây trắng trôi
+    final skyPaint = Paint()
       ..shader = const LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: [Color(0xFF004D40), Color(0xFF006064), Color(0xFF00838F)],
+        colors: [Color(0xFF70C5E8), Color(0xFFBCE3F5)],
       ).createShader(Offset.zero & size);
-    canvas.drawRect(Offset.zero & size, oceanPaint);
+    canvas.drawRect(Offset.zero & size, skyPaint);
 
-    // Gợn sóng biển nhẹ
-    final wavePaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.15)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
-    canvas.drawOval(Rect.fromCenter(center: Offset(size.width * 0.5, size.height * 0.5), width: size.width * 0.95, height: size.height * 0.65), wavePaint);
-    canvas.drawOval(Rect.fromCenter(center: Offset(size.width * 0.5, size.height * 0.5), width: size.width * 0.85, height: size.height * 0.55), wavePaint);
+    // Mây trắng trôi bồng bềnh
+    _drawCloud(canvas, Offset(size.width * 0.15, size.height * 0.10), 32);
+    _drawCloud(canvas, Offset(size.width * 0.82, size.height * 0.14), 26);
+    _drawCloud(canvas, Offset(size.width * 0.35, size.height * 0.22), 22);
 
-    // 2. Khối đảo 2.5D: Vách đá đáy + Bãi cát vàng + Thảm cỏ xanh
-    final center = Offset(size.width * 0.5, size.height * 0.46);
+    // 2. KHỐI ĐẢO BAY 2.5D (Floating Sky Island):
+    final center = Offset(size.width * 0.5, size.height * 0.44);
     final islandWidth = size.width * 0.88;
-    final islandHeight = size.height * 0.50;
+    final islandHeight = size.height * 0.38;
 
-    // Vách đá 2.5D đáy đảo
-    final cliffRect = Rect.fromCenter(center: center + const Offset(0, 16), width: islandWidth, height: islandHeight);
-    canvas.drawOval(cliffRect, Paint()..color = const Color(0xFF3E2723));
+    // A. Vách đá đáy đảo bay (Inverted Rocky Cliff)
+    final cliffPath = Path()
+      ..moveTo(center.dx - islandWidth * 0.5, center.dy)
+      ..quadraticBezierTo(center.dx - islandWidth * 0.3, center.dy + islandHeight * 0.85, center.dx, center.dy + islandHeight * 0.95)
+      ..quadraticBezierTo(center.dx + islandWidth * 0.3, center.dy + islandHeight * 0.85, center.dx + islandWidth * 0.5, center.dy)
+      ..close();
 
-    // Bãi cát vàng ven bờ
-    final sandRect = Rect.fromCenter(center: center + const Offset(0, 8), width: islandWidth - 8, height: islandHeight - 6);
-    canvas.drawOval(sandRect, Paint()..color = const Color(0xFFFFD54F));
+    // Bóng đổ đáy đảo
+    canvas.drawPath(
+      cliffPath.shift(const Offset(0, 10)),
+      Paint()
+        ..color = Colors.black.withValues(alpha: 0.25)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12),
+    );
 
-    // Thảm cỏ xanh mướt trên đỉnh đảo
-    final grassRect = Rect.fromCenter(center: center, width: islandWidth - 28, height: islandHeight - 24);
-    canvas.drawOval(grassRect, Paint()..color = const Color(0xFF4CAF50));
+    // Vách đá đất nâu tầng lớp
+    canvas.drawPath(
+      cliffPath,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF6D4226), Color(0xFF4E2A12), Color(0xFF2E1708)],
+        ).createShader(Rect.fromLTWH(center.dx - islandWidth / 2, center.dy, islandWidth, islandHeight)),
+    );
 
-    // 3. Vẽ 3 khu nghỉ dưỡng mở khóa
-    // Zone 1: Bãi Biển Corgi (Góc trái dưới)
-    if (unlockedZones.contains('corgi_beach')) {
-      _drawBeachZone(canvas, center + Offset(-islandWidth * 0.25, islandHeight * 0.15));
-    }
-    // Zone 2: Quán Cà Phê Mèo (Góc phải trên)
-    if (unlockedZones.contains('cat_cafe')) {
-      _drawCafeZone(canvas, center + Offset(islandWidth * 0.22, -islandHeight * 0.16));
-    }
-    // Zone 3: Hồ Bơi Vịt Vàng (Góc trái trên)
-    if (unlockedZones.contains('duck_pool')) {
-      _drawPoolZone(canvas, center + Offset(-islandWidth * 0.20, -islandHeight * 0.14));
-    }
+    // B. Thảm cỏ xanh mướt trên đỉnh đảo
+    final grassRect = Rect.fromCenter(center: center, width: islandWidth, height: islandHeight * 0.65);
+    canvas.drawOval(
+      grassRect.shift(const Offset(0, 6)),
+      Paint()..color = const Color(0xFF388E3C),
+    );
+    canvas.drawOval(
+      grassRect,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF81C784), Color(0xFF4CAF50)],
+        ).createShader(grassRect),
+    );
 
-    // 4. Vẽ các bé thú cưng nhún nhảy
+    // Cây xanh rậm rạp ở góc trên sau đảo
+    _drawBackdropTrees(canvas, center, islandWidth, islandHeight);
+
+    // C. 3 KHU VỰC THƯ GIÃN TRÊN ĐẢO:
+    // 1. Quán Cà Phê Mèo (Cat Cafe - góc trên trái)
+    _drawCatCafeDiorama(canvas, center + Offset(-islandWidth * 0.28, -islandHeight * 0.16));
+
+    // 2. Hồ Bơi Vịt Vàng (Duck Pool - ở giữa bên trái)
+    _drawDuckPoolDiorama(canvas, center + Offset(-islandWidth * 0.12, islandHeight * 0.12));
+
+    // 3. Bãi Biển Corgi (Corgi Beach - góc dưới phải)
+    _drawCorgiBeachDiorama(canvas, center + Offset(islandWidth * 0.26, islandHeight * 0.10));
+
+    // D. Đàn thú cưng nhún nhảy đi dạo
     for (final pet in pets) {
       _drawWanderingPet(canvas, pet);
     }
 
-    // 5. Vẽ trái tim bay lượn
-    for (final heart in hearts) {
-      final yOffset = -heart.progress * 42.0;
-      final opacity = (1.0 - heart.progress).clamp(0.0, 1.0);
-      final heartPos = heart.position + Offset(0, yOffset);
-
-      final textPainter = TextPainter(
-        text: TextSpan(
-          text: '❤️',
-          style: TextStyle(
-            fontSize: 16.0 * (1.0 + heart.progress * 0.3),
-            color: Colors.red.withValues(alpha: opacity),
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      textPainter.paint(canvas, heartPos - Offset(textPainter.width / 2, textPainter.height / 2));
+    // E. Đồng xu vàng bay bổng (+25, +25, +25)
+    for (final coin in coinBursts) {
+      _drawFloatingCoin(canvas, coin);
     }
   }
 
-  void _drawBeachZone(Canvas canvas, Offset pos) {
-    // Dù bãi biển sọc đỏ trắng
-    final umbrellaPaint = Paint()..color = const Color(0xFFFF5252);
-    canvas.drawCircle(pos, 16, umbrellaPaint);
-    canvas.drawCircle(pos, 8, Paint()..color = Colors.white);
-    canvas.drawCircle(pos, 3, Paint()..color = const Color(0xFFFFD54F));
+  void _drawCloud(Canvas canvas, Offset pos, double r) {
+    final cloudPaint = Paint()..color = Colors.white.withValues(alpha: 0.85);
+    canvas.drawCircle(pos, r, cloudPaint);
+    canvas.drawCircle(pos + Offset(r * 0.6, 0), r * 0.75, cloudPaint);
+    canvas.drawCircle(pos - Offset(r * 0.6, 0), r * 0.75, cloudPaint);
   }
 
-  void _drawCafeZone(Canvas canvas, Offset pos) {
-    // Quán cà phê gỗ nhỏ
-    final boothRect = Rect.fromCenter(center: pos, width: 34, height: 24);
-    canvas.drawRRect(RRect.fromRectAndRadius(boothRect, const Radius.circular(6)), Paint()..color = const Color(0xFF795548));
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: pos + const Offset(0, -10), width: 38, height: 8), const Radius.circular(4)), Paint()..color = const Color(0xFFFF9800));
+  void _drawBackdropTrees(Canvas canvas, Offset center, double w, double h) {
+    for (int i = 0; i < 5; i++) {
+      final treeX = center.dx - w * 0.35 + i * (w * 0.18);
+      final treeY = center.dy - h * 0.25;
+      canvas.drawCircle(Offset(treeX, treeY + 3), 16, Paint()..color = const Color(0xFF2E7D32));
+      canvas.drawCircle(Offset(treeX, treeY), 16, Paint()..color = const Color(0xFF43A047));
+      canvas.drawCircle(Offset(treeX - 4, treeY - 4), 7, Paint()..color = const Color(0xFF81C784));
+    }
   }
 
-  void _drawPoolZone(Canvas canvas, Offset pos) {
-    // Hồ bơi nước ngọt tròn xanh biếc
-    final poolRect = Rect.fromCenter(center: pos, width: 44, height: 32);
-    canvas.drawOval(poolRect, Paint()..color = const Color(0xFF00E5FF));
-    canvas.drawOval(poolRect, Paint()..color = Colors.white..style = PaintingStyle.stroke..strokeWidth = 2.0);
-    // Vịt vàng phao bơi nhỏ
-    canvas.drawCircle(pos, 5, Paint()..color = const Color(0xFFFFEB3B));
+  /// 1. Kiosk Quán Cà Phê Mèo (Cat Cafe)
+  void _drawCatCafeDiorama(Canvas canvas, Offset pos) {
+    // Mái che sọc cam trắng
+    final awningRect = Rect.fromCenter(center: pos + const Offset(0, -18), width: 56, height: 16);
+    canvas.drawRRect(RRect.fromRectAndRadius(awningRect, const Radius.circular(5)), Paint()..color = const Color(0xFFFF9800));
+    // Sọc trắng
+    for (int i = 0; i < 3; i++) {
+      canvas.drawRect(Rect.fromLTWH(awningRect.left + 8 + i * 16, awningRect.top, 8, 16), Paint()..color = Colors.white);
+    }
+    // Quầy gỗ
+    final booth = Rect.fromCenter(center: pos, width: 52, height: 26);
+    canvas.drawRRect(RRect.fromRectAndRadius(booth, const Radius.circular(6)), Paint()..color = const Color(0xFF6D4226));
+    // Cốc trà sữa boba
+    final textPainter = TextPainter(
+      text: const TextSpan(text: '🐱🧋', style: TextStyle(fontSize: 16)),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    textPainter.paint(canvas, pos - Offset(textPainter.width / 2, 8));
+
+    // Bảng tên "Cat Cafe"
+    _drawZoneLabelPill(canvas, pos + const Offset(0, 18), 'Cat Cafe');
+  }
+
+  /// 2. Hồ Bơi Vịt Vàng (Duck Pool)
+  void _drawDuckPoolDiorama(Canvas canvas, Offset pos) {
+    // Mặt nước hồ xanh biếc có viền đá
+    final poolRect = Rect.fromCenter(center: pos, width: 72, height: 42);
+    canvas.drawOval(poolRect.inflate(3), Paint()..color = const Color(0xFFB0BEC5));
+    canvas.drawOval(
+      poolRect,
+      Paint()
+        ..shader = const LinearGradient(
+          colors: [Color(0xFF29B6F6), Color(0xFF0288D1)],
+        ).createShader(poolRect),
+    );
+    // Gợn sóng
+    canvas.drawOval(
+      Rect.fromCenter(center: pos, width: 44, height: 20),
+      Paint()
+        ..color = Colors.white.withValues(alpha: 0.45)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5,
+    );
+
+    // Đàn vịt vàng bơi
+    final duck1 = TextPainter(text: const TextSpan(text: '🐥', style: TextStyle(fontSize: 14)), textDirection: TextDirection.ltr)..layout();
+    duck1.paint(canvas, pos - const Offset(16, 10));
+    final duck2 = TextPainter(text: const TextSpan(text: '🐥', style: TextStyle(fontSize: 13)), textDirection: TextDirection.ltr)..layout();
+    duck2.paint(canvas, pos + const Offset(6, -4));
+
+    // Bảng tên "Duck Pool"
+    _drawZoneLabelPill(canvas, pos + const Offset(0, 26), 'Duck Pool');
+  }
+
+  /// 3. Bãi Biển Corgi (Corgi Beach)
+  void _drawCorgiBeachDiorama(Canvas canvas, Offset pos) {
+    // Bãi cát vàng
+    final sandRect = Rect.fromCenter(center: pos, width: 74, height: 46);
+    canvas.drawOval(sandRect, Paint()..color = const Color(0xFFFFE082));
+
+    // Ô dù bãi biển sọc đỏ trắng
+    final umbrellaPos = pos + const Offset(18, -12);
+    canvas.drawCircle(umbrellaPos, 14, Paint()..color = const Color(0xFFFF5252));
+    canvas.drawCircle(umbrellaPos, 8, Paint()..color = Colors.white);
+    canvas.drawCircle(umbrellaPos, 3, Paint()..color = const Color(0xFFFFD54F));
+
+    // Cún corgi vui đùa
+    final corgi = TextPainter(text: const TextSpan(text: '🐶', style: TextStyle(fontSize: 17)), textDirection: TextDirection.ltr)..layout();
+    corgi.paint(canvas, pos - const Offset(14, 12));
+
+    // Bảng tên "Corgi Beach"
+    _drawZoneLabelPill(canvas, pos + const Offset(0, 26), 'Corgi Beach');
+  }
+
+  void _drawZoneLabelPill(Canvas canvas, Offset pos, String text) {
+    final span = TextSpan(
+      text: text,
+      style: const TextStyle(color: Colors.white, fontSize: 8.5, fontWeight: FontWeight.w900, letterSpacing: 0.4),
+    );
+    final painter = TextPainter(text: span, textDirection: TextDirection.ltr)..layout();
+    final pillRect = Rect.fromCenter(center: pos, width: painter.width + 12, height: 15);
+    canvas.drawRRect(RRect.fromRectAndRadius(pillRect, const Radius.circular(8)), Paint()..color = const Color(0xDD21292E));
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(pillRect, const Radius.circular(8)),
+      Paint()
+        ..color = const Color(0xFFFFD54F)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0,
+    );
+    painter.paint(canvas, pos - Offset(painter.width / 2, painter.height / 2));
   }
 
   void _drawWanderingPet(Canvas canvas, WanderingPet pet) {
     final petPos = pet.position + Offset(0, -pet.hopHeight);
 
-    // Đổ bóng dưới chân
     canvas.drawOval(
-      Rect.fromCenter(center: pet.position + const Offset(0, 8), width: 18, height: 6),
+      Rect.fromCenter(center: pet.position + const Offset(0, 7), width: 16, height: 5),
       Paint()..color = Colors.black26,
     );
 
     // Thân bé thú tròn
-    final bodyPaint = Paint()..color = pet.color.primaryColor;
-    canvas.drawCircle(petPos, 12, bodyPaint);
-
+    canvas.drawCircle(petPos, 11, Paint()..color = pet.color.primaryColor);
     // Khuôn mặt đáng yêu
     final eyePaint = Paint()..color = Colors.black87;
-    canvas.drawCircle(petPos + const Offset(-4, -2), 1.6, eyePaint);
-    canvas.drawCircle(petPos + const Offset(4, -2), 1.6, eyePaint);
-    canvas.drawCircle(petPos + const Offset(0, 2), 1.5, Paint()..color = pet.color.darkColor);
+    canvas.drawCircle(petPos + const Offset(-4, -2), 1.5, eyePaint);
+    canvas.drawCircle(petPos + const Offset(4, -2), 1.5, eyePaint);
+    canvas.drawCircle(petPos + const Offset(0, 2), 1.4, Paint()..color = pet.color.darkColor);
+  }
+
+  void _drawFloatingCoin(Canvas canvas, FloatingCoinParticle coin) {
+    final yOffset = -coin.progress * 60.0;
+    final opacity = (1.0 - coin.progress).clamp(0.0, 1.0);
+    final coinPos = coin.position + Offset(0, yOffset);
+
+    final painter = TextPainter(
+      text: TextSpan(
+        text: '🟡 ${coin.text}',
+        style: TextStyle(
+          color: const Color(0xFFFFD54F).withValues(alpha: opacity),
+          fontSize: 13.0,
+          fontWeight: FontWeight.w900,
+          shadows: [
+            Shadow(color: Colors.black.withValues(alpha: opacity * 0.7), blurRadius: 4, offset: const Offset(1, 1)),
+          ],
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    painter.paint(canvas, coinPos - Offset(painter.width / 2, painter.height / 2));
   }
 
   @override
   bool shouldRepaint(covariant SanctuaryIslandPainter oldDelegate) => true;
 }
-
