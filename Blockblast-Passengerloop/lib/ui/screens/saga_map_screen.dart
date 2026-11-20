@@ -3,16 +3,12 @@ import 'package:flutter/material.dart';
 import '../../logic/player_economy_service.dart';
 import '../../core/pentatonic_audio_synth.dart';
 
-<<<<<<< HEAD
-/// Tab 2 - Bản Đồ Hành Trình 500 Màn (Saga World Map) uốn lượn qua 11 Chương
-=======
 /// Màn hình 2: BẢN ĐỒ (Saga Map)
 /// Tái tạo chuẩn xác 100% theo Mockup:
 /// 1. Bầu trời xanh mây trắng cùng khinh khí cầu bay lơ lửng
 /// 2. Chuỗi đảo bay 2.5D Diorama: Sunny Park, Frozen Station, Vine Jungle & Lâu đài Vua Cánh Cụt
 /// 3. Đường uốn lượn kèm rương mốc quà tặng & sao 1-3 sao
 /// 4. Thanh đáy nổi gồm nút level, Nút Vàng "PLAY" 3D to bản & Nút Cài đặt
->>>>>>> 9c029f433040f9f1582aba761103e9d6623e2aeb
 class SagaMapScreen extends StatefulWidget {
   final Function(int level) onSelectLevel;
 
@@ -43,54 +39,9 @@ class _SagaMapScreenState extends State<SagaMapScreen> with SingleTickerProvider
     });
   }
 
-<<<<<<< HEAD
-  void _jumpToChapter(int chapter) {
-    setState(() {
-      _selectedChapter = chapter;
-    });
-    final int startLevel;
-    switch (chapter) {
-      case 1:
-        startLevel = 1;
-        break;
-      case 2:
-        startLevel = 31;
-        break;
-      case 3:
-        startLevel = 81;
-        break;
-      case 4:
-        startLevel = 131;
-        break;
-      case 5:
-        startLevel = 171;
-        break;
-      case 6:
-        startLevel = 201;
-        break;
-      case 7:
-        startLevel = 251;
-        break;
-      case 8:
-        startLevel = 301;
-        break;
-      case 9:
-        startLevel = 351;
-        break;
-      case 10:
-        startLevel = 401;
-        break;
-      case 11:
-      default:
-        startLevel = 451;
-        break;
-    }
-
-=======
   void _scrollToCurrentLevel() {
     final economy = PlayerEconomyService.instance;
     final int current = economy.unlockedLevel;
->>>>>>> 9c029f433040f9f1582aba761103e9d6623e2aeb
     if (_scrollController.hasClients) {
       // Mỗi đảo chiếm khoảng 260px chiều cao
       final int islandIndex = _islandIndexForLevel(current);
@@ -111,101 +62,11 @@ class _SagaMapScreenState extends State<SagaMapScreen> with SingleTickerProvider
     return 4; // Penguin Castle
   }
 
-<<<<<<< HEAD
-  ({String title, Color c1, Color c2, String emoji}) _chapterInfo(int level) {
-    if (level <= 30) {
-      return (
-        title: 'Chương 1: Công Viên Nắng Ấm (1-30)',
-        c1: const Color(0xFF88D45E),
-        c2: const Color(0xFF4BC226),
-        emoji: '🌞',
-      );
-    }
-    if (level <= 80) {
-      return (
-        title: 'Chương 2: Xứ Sở Băng Giá (31-80)',
-        c1: const Color(0xFF4FC3F7),
-        c2: const Color(0xFF0D5CA8),
-        emoji: '❄️',
-      );
-    }
-    if (level <= 130) {
-      return (
-        title: 'Chương 3: Rừng Dây Leo (81-130)',
-        c1: const Color(0xFF66BB6A),
-        c2: const Color(0xFF2D8512),
-        emoji: '🌿',
-      );
-    }
-    if (level <= 170) {
-      return (
-        title: 'Chương 4: Thành Phố Đồ Chơi (131-170)',
-        c1: const Color(0xFFFF9D42),
-        c2: const Color(0xFFE86F17),
-        emoji: '🧸',
-      );
-    }
-    if (level <= 200) {
-      return (
-        title: 'Chương 5: Thủ Đô Di Chúc (171-200)',
-        c1: const Color(0xFFFF6B5B),
-        c2: const Color(0xFFA82419),
-        emoji: '👑',
-      );
-    }
-    if (level <= 250) {
-      return (
-        title: 'Chương 6: Thung Lũng Dung Nham (201-250)',
-        c1: const Color(0xFFFF5722),
-        c2: const Color(0xFFD84315),
-        emoji: '🌋',
-      );
-    }
-    if (level <= 300) {
-      return (
-        title: 'Chương 7: Bến Cảng Hoàng Hôn (251-300)',
-        c1: const Color(0xFF7E57C2),
-        c2: const Color(0xFF283593),
-        emoji: '⚓',
-      );
-    }
-    if (level <= 350) {
-      return (
-        title: 'Chương 8: Vườn Nấm Phát Sáng (301-350)',
-        c1: const Color(0xFF26A69A),
-        c2: const Color(0xFF004D40),
-        emoji: '🍄',
-      );
-    }
-    if (level <= 400) {
-      return (
-        title: 'Chương 9: Nhà Máy Bánh Răng (351-400)',
-        c1: const Color(0xFFFFA000),
-        c2: const Color(0xFF455A64),
-        emoji: '⚙️',
-      );
-    }
-    if (level <= 450) {
-      return (
-        title: 'Chương 10: Xứ Sở Kẹo Ngọt (401-450)',
-        c1: const Color(0xFFEC407A),
-        c2: const Color(0xFFAD1457),
-        emoji: '🍭',
-      );
-    }
-    return (
-      title: 'Chương 11: Thiên Hà Tinh Vân (451-500)',
-      c1: const Color(0xFF7C4DFF),
-      c2: const Color(0xFF1A237E),
-      emoji: '🚀',
-    );
-=======
   @override
   void dispose() {
     _floatAnimController.dispose();
     _scrollController.dispose();
     super.dispose();
->>>>>>> 9c029f433040f9f1582aba761103e9d6623e2aeb
   }
 
   @override
@@ -215,53 +76,6 @@ class _SagaMapScreenState extends State<SagaMapScreen> with SingleTickerProvider
       builder: (context, _) {
         final economy = PlayerEconomyService.instance;
 
-<<<<<<< HEAD
-        return Column(
-          children: [
-            // Nút Tập luyện Căn bản (FTUE) + Thanh chọn nhanh 11 Chương
-            Container(
-              color: const Color(0xFF21292E),
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF4BC226),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 7),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-                          ),
-                          icon: const Text('🎓', style: TextStyle(fontSize: 15)),
-                          label: const Text(
-                            'TẬP LUYỆN CĂN BẢN (MÀN 0)',
-                            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11.5),
-                          ),
-                          onPressed: () => widget.onSelectLevel(0),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        _buildChapterChip(1, 'C1: Công Viên'),
-                        _buildChapterChip(2, 'C2: Băng Giá'),
-                        _buildChapterChip(3, 'C3: Dây Leo'),
-                        _buildChapterChip(4, 'C4: Đồ Chơi'),
-                        _buildChapterChip(5, 'C5: Thủ Đô'),
-                        _buildChapterChip(6, 'C6: Dung Nham'),
-                        _buildChapterChip(7, 'C7: Bến Cảng'),
-                        _buildChapterChip(8, 'C8: Vườn Nấm'),
-                        _buildChapterChip(9, 'C9: Bánh Răng'),
-                        _buildChapterChip(10, 'C10: Kẹo Ngọt'),
-                        _buildChapterChip(11, 'C11: Thiên Hà'),
-                      ],
-=======
         return Scaffold(
           backgroundColor: const Color(0xFF64B5F6), // Xanh da trời sáng chuẩn diorama
           body: Stack(
@@ -289,7 +103,6 @@ class _SagaMapScreenState extends State<SagaMapScreen> with SingleTickerProvider
                       levelRange: '171 - 200',
                       milestoneLevel: 200,
                       isTopPeak: true,
->>>>>>> 9c029f433040f9f1582aba761103e9d6623e2aeb
                     ),
                     const SizedBox(height: 18),
 
@@ -331,121 +144,12 @@ class _SagaMapScreenState extends State<SagaMapScreen> with SingleTickerProvider
                 ),
               ),
 
-<<<<<<< HEAD
-            // Đường đi Saga uốn lượn 500 màn
-            Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final double width = constraints.maxWidth;
-                  return ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    itemCount: 500,
-                    itemBuilder: (context, index) {
-                      final int level = index + 1;
-                      final bool isChapterStart = level == 1 ||
-                          level == 31 ||
-                          level == 81 ||
-                          level == 131 ||
-                          level == 171 ||
-                          level == 201 ||
-                          level == 251 ||
-                          level == 301 ||
-                          level == 351 ||
-                          level == 401 ||
-                          level == 451;
-                      final info = _chapterInfo(level);
-                      final bool isMilestone = PlayerEconomyService.kMilestoneLevels.contains(level);
-
-                      final double xNorm = _nodeNormalizedX(index);
-                      final double nextXNorm = level < 500 ? _nodeNormalizedX(index + 1) : xNorm;
-                      final double nodeX = width / 2 + xNorm * (width * 0.34);
-                      final double nextNodeX = width / 2 + nextXNorm * (width * 0.34);
-
-                      final bool isUnlocked = level <= economy.unlockedLevel;
-                      final bool isCurrent = level == economy.unlockedLevel;
-                      final int stars = economy.levelStars[level] ?? 0;
-
-                      return Column(
-                        children: [
-                          if (isChapterStart)
-                            Container(
-                              margin: const EdgeInsets.fromLTRB(16, 6, 16, 8),
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(colors: [info.c1, info.c2]),
-                                borderRadius: BorderRadius.circular(14),
-                                boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 5, offset: Offset(0, 3))],
-                              ),
-                              child: Row(
-                                children: [
-                                  Text(info.emoji, style: const TextStyle(fontSize: 18)),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      info.title,
-                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12.5),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          SizedBox(
-                            height: _rowHeight,
-                            width: width,
-                            child: Stack(
-                              clipBehavior: Clip.none,
-                              children: [
-                                // Đoạn đường cong nối sang màn kế tiếp
-                                if (level < 500)
-                                  Positioned.fill(
-                                    child: CustomPaint(
-                                      painter: _SagaPathPainter(
-                                        startX: nodeX,
-                                        endX: nextNodeX,
-                                        height: _rowHeight,
-                                        isUnlocked: isUnlocked,
-                                      ),
-                                    ),
-                                  ),
-
-                                // Nút màn chơi trên đường uốn lượn
-                                Positioned(
-                                  left: nodeX - 30,
-                                  top: 8,
-                                  width: 60,
-                                  child: _buildLevelNode(
-                                    level: level,
-                                    stars: stars,
-                                    isUnlocked: isUnlocked,
-                                    isCurrent: isCurrent,
-                                    chapterColor: info.c2,
-                                  ),
-                                ),
-
-                                // Rương Quà tại các mốc màn 10, 25, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500
-                                if (isMilestone)
-                                  Positioned(
-                                    left: xNorm > 0 ? nodeX - 102 : nodeX + 42,
-                                    top: 10,
-                                    child: _buildMilestoneChest(context, economy, level),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  );
-                },
-=======
               // 3. Header Treo: "2. BẢN ĐỒ (Saga Map)" & 3 Sao Vàng
               Positioned(
                 top: 8,
                 left: 12,
                 right: 12,
                 child: _buildHeaderBanner(),
->>>>>>> 9c029f433040f9f1582aba761103e9d6623e2aeb
               ),
 
               // 4. Thanh đáy nổi: Level Pill, Nút PLAY Vàng 3D To Bản & Nút Cài Đặt

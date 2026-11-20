@@ -173,41 +173,9 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
       }
     }));
 
-    _subscriptions.add(GameEventBus.instance.on<PassengerBoardBusEvent>().listen((event) {
-      if (mounted) {
-        _controller.triggerBusBounce();
-        if (!_animController.isAnimating) {
-          _animController.forward(from: 0.0);
-        }
-      }
-    }));
-
-    _subscriptions.add(GameEventBus.instance.on<DockPetBoardedEvent>().listen((event) {
-      if (mounted) {
-        final scaler = _buildCurrentScaler();
-        _controller.spawnDockToBusFlyingPet(event.slotIndex, event.petColor, scaler);
-        if (!_animController.isAnimating) {
-          _animController.forward(from: 0.0);
-        }
-      }
-    }));
-
-    _subscriptions.add(GameEventBus.instance.on<NextBusArrivedEvent>().listen((event) {
-      if (mounted) {
-        _controller.startNextBusArrival();
-        if (!_animController.isAnimating) {
-          _animController.forward(from: 0.0);
-        }
-      }
-    }));
-
     _subscriptions.add(GameEventBus.instance.on<BusDispatchedEvent>().listen((event) {
       PentatonicAudioSynth.instance.playBusHorn();
-      _controller.startBusDeparture(event.bus);
       _controller.handleBusDispatched(event.bus);
-      if (!_animController.isAnimating) {
-        _animController.forward(from: 0.0);
-      }
     }));
 
     _subscriptions.add(GameEventBus.instance.on<GameWinEvent>().listen((event) async {
@@ -274,7 +242,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
         coinsEarned: coinsEarned,
         onNextLevel: () {
           Navigator.pop(context);
-          final nextLevel = (_controller.currentLevel + 1).clamp(1, 500);
+          final nextLevel = (_controller.currentLevel + 1).clamp(1, 200);
           _startLevel(nextLevel);
         },
         onBackToMap: () {
@@ -332,15 +300,6 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     setState(() {
       _controller.tickAnimations(_animController.value);
     });
-    // Tiếp tục lặp diễn hoạt mượt mà nếu xe buýt đang di chuyển hoặc nhún lò xo
-    if (_animController.value >= 1.0 &&
-        (_controller.busDepartureProgress < 1.0 ||
-         _controller.busArrivalProgress < 1.0 ||
-         _controller.busBounceProgress < 1.0 ||
-         _controller.flyingPets.isNotEmpty ||
-         _controller.floatingPopups.isNotEmpty)) {
-      _animController.forward(from: 0.0);
-    }
   }
 
   @override
@@ -394,36 +353,6 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                     onTapUp: (details) => _handleTap(details.localPosition, scaler),
                     child: Stack(
                       children: [
-<<<<<<< HEAD
-                        // 1. Nền công viên Gradient, Trạm xe buýt 2.5D, Ghế dài Holding Dock & Đường bay Parabol (Tách Layer RepaintBoundary)
-                        RepaintBoundary(
-                          child: CustomPaint(
-                            size: safeSize,
-                            painter: BusStationPainter(
-                              scaler: scaler,
-                              activeBus: _controller.busStation.activeBus,
-                              nextBus: _controller.busStation.nextBus,
-                              departingBus: _controller.departingBus,
-                              departureProgress: _controller.busDepartureProgress,
-                              arrivalProgress: _controller.busArrivalProgress,
-                              busBounceProgress: _controller.busBounceProgress,
-                              totalBusesInLevel: _controller.busStation.totalBusesInLevel,
-                              totalDispatchedCount: _controller.busStation.totalDispatchedCount,
-                              queuedBuses: _controller.busStation.queuedBusesList,
-                              holdingDock: _controller.busStation.holdingDock,
-                              score: _controller.actionQueue.currentScore,
-                              currentLevel: _controller.currentLevel,
-                              flyingPets: _controller.flyingPets,
-                              skin: activeSkin,
-                              elapsedSec: _idleTickerController.value * 60.0,
-                              streak: WinStreakManager.instance.streakCount > 0
-                                  ? WinStreakManager.instance.streakCount
-                                  : 3,
-                              coins: PlayerEconomyService.instance.coins > 0
-                                  ? PlayerEconomyService.instance.coins
-                                  : 2450,
-                            ),
-=======
                         // 1. Nền công viên Gradient, Trạm xe buýt 2.5D, Ghế dài Holding Dock & Đường bay Parabol
                         CustomPaint(
                           size: safeSize,
@@ -437,34 +366,31 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                             flyingPets: _controller.flyingPets,
                             skin: activeSkin,
                             winStreak: WinStreakManager.instance.currentStreak,
->>>>>>> 9c029f433040f9f1582aba761103e9d6623e2aeb
                           ),
                         ),
 
-                        // 2. Bàn cờ gỗ 8x8 2.5D + Kawaii25DRenderer (Ticker 60fps thở & chớp mắt) + Line Highlight Glow (Tách Layer RepaintBoundary)
-                        RepaintBoundary(
-                          child: CustomPaint(
-                            size: safeSize,
-                            painter: Board25DPainter(
-                              scaler: scaler,
-                              cells: _controller.gridEngine.cells,
-                              draggingShape: _draggingShape,
-                              ghostCell: _hoverCell,
-                              isValidGhost: _isValidSnap,
-                              linePreview: _controller.activeLinePreview,
-                              isHammerActive: _controller.isHammerActive,
-                              hammerHoverCell: _hammerHoverCell,
-                              comboEffects: _controller.floatingPopups,
-                              skin: activeSkin,
-                              repaint: _idleTickerController,
-                              getElapsedSec: () {
-                                final elapsed = _idleTickerController.lastElapsedDuration;
-                                if (elapsed != null) {
-                                  return elapsed.inMicroseconds / 1000000.0;
-                                }
-                                return _idleTickerController.value * 60.0;
-                              },
-                            ),
+                        // 2. Bàn cờ gỗ 8x8 2.5D + Kawaii25DRenderer (Ticker 60fps thở & chớp mắt) + Line Highlight Glow
+                        CustomPaint(
+                          size: safeSize,
+                          painter: Board25DPainter(
+                            scaler: scaler,
+                            cells: _controller.gridEngine.cells,
+                            draggingShape: _draggingShape,
+                            ghostCell: _hoverCell,
+                            isValidGhost: _isValidSnap,
+                            linePreview: _controller.activeLinePreview,
+                            isHammerActive: _controller.isHammerActive,
+                            hammerHoverCell: _hammerHoverCell,
+                            comboEffects: _controller.floatingPopups,
+                            skin: activeSkin,
+                            repaint: _idleTickerController,
+                            getElapsedSec: () {
+                              final elapsed = _idleTickerController.lastElapsedDuration;
+                              if (elapsed != null) {
+                                return elapsed.inMicroseconds / 1000000.0;
+                              }
+                              return _idleTickerController.value * 60.0;
+                            },
                           ),
                         ),
 
@@ -543,33 +469,6 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                             ),
                           ),
 
-<<<<<<< HEAD
-                        // Hai nút góc trên trái: Tạm dừng (Pause) và Hướng dẫn (?) né biển gỗ Level
-                        Positioned(
-                          top: 58,
-                          left: 10,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _buildTopCircleButton(
-                                icon: Icons.pause_rounded,
-                                tooltip: 'Tạm dừng',
-                                onTap: _openPauseModal,
-                              ),
-                              const SizedBox(width: 6),
-                              _buildTopCircleButton(
-                                icon: Icons.help_outline_rounded,
-                                tooltip: 'Hướng dẫn (?)',
-                                onTap: () {
-                                  if (_controller.isTutorialActive) {
-                                    _controller.skipTutorial();
-                                  } else {
-                                    _controller.openTutorialOverlay();
-                                  }
-                                },
-                              ),
-                            ],
-=======
                         // Nút Tạm dừng / Cài đặt góc trên phải (Khớp hoàn toàn với nút Cúp Vàng "Cài đặt" trong Mockup)
                         Positioned(
                           top: 4,
@@ -582,7 +481,6 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                               height: 44,
                               color: Colors.transparent,
                             ),
->>>>>>> 9c029f433040f9f1582aba761103e9d6623e2aeb
                           ),
                         ),
                       ],
@@ -632,12 +530,6 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
   }
 
   Widget _buildZoneDControls(ViewportScaler scaler, GameSkinTheme activeSkin) {
-    final double trayLeft = scaler.traySlotRects.first.left - 6.0;
-    final double trayRight = scaler.traySlotRects.last.right + 6.0;
-    final double trayTop = scaler.traySlotRects.first.top - scaler.zoneDRect.top - 4.0;
-    final double trayWidth = trayRight - trayLeft;
-    final double trayHeight = scaler.traySlotRects.first.height + 8.0;
-
     return Positioned(
       left: scaler.zoneDRect.left,
       top: scaler.zoneDRect.top,
@@ -646,75 +538,23 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-<<<<<<< HEAD
-          // 1. Chữ "Next" màu trắng to đậm căn giữa phía trên khay gạch chuẩn ảnh mẫu
-=======
           // Nút Cổ vật trái: Búa Rèn Lửa
->>>>>>> 9c029f433040f9f1582aba761103e9d6623e2aeb
           Positioned(
-            left: trayLeft,
-            width: trayWidth,
-            top: trayTop - 20.0,
-            child: const Center(
-              child: Text(
-                'Next',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 15.0,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 0.5,
-                  shadows: [
-                    Shadow(color: Colors.black87, offset: Offset(0, 1.5), blurRadius: 3),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // 2. Khay gạch màu xanh rêu bo góc chuẩn ảnh mẫu (Dark Moss Green Tray)
-          Positioned(
-            left: trayLeft,
-            top: trayTop,
-            width: trayWidth,
-            height: trayHeight,
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFF294E2B),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFF467A49), width: 2.0),
-                boxShadow: const [
-                  BoxShadow(color: Colors.black38, blurRadius: 6, offset: Offset(0, 3)),
-                ],
-              ),
-            ),
-          ),
-
-          // 3. Nút Kỹ Năng Bên Trái (Búa Rèn Lửa) có quầng hào quang tím hồng + nhãn chữ bên dưới
-          Positioned(
-            left: scaler.hammerButtonRect.left - 2,
-            top: scaler.hammerButtonRect.top - scaler.zoneDRect.top - 4,
-            width: scaler.hammerButtonRect.width + 4,
-            height: scaler.hammerButtonRect.height + 24,
+            left: scaler.hammerButtonRect.left,
+            top: scaler.hammerButtonRect.top - scaler.zoneDRect.top,
+            width: scaler.hammerButtonRect.width,
+            height: scaler.hammerButtonRect.height,
             child: _buildSkillButton(
               icon: '🔨',
-<<<<<<< HEAD
-              title: 'Búa Rèn Lửa',
-=======
               title: 'Relics',
->>>>>>> 9c029f433040f9f1582aba761103e9d6623e2aeb
               charge: _controller.actionQueue.hammerCharge,
               maxCharge: _controller.actionQueue.hammerMaxCharge,
               isActive: _controller.isHammerActive,
-              glowColor: const Color(0xFFE040FB),
-              gradientColors: [const Color(0xFFAB47BC), const Color(0xFF6A1B9A)],
-              ringColors: [const Color(0xFFE1BEE7), const Color(0xFFBA68C8)],
+              glowColor: const Color(0xFFFF6B5B),
               onTap: _toggleHammer,
             ),
           ),
 
-<<<<<<< HEAD
-          // 4. Ba ô khối gạch trong Khay Next
-=======
           // Khung khay gỗ đựng 3 khối gạch Next (có nhãn "Next" ở giữa)
           Positioned(
             left: scaler.traySlotRects[0].left - 6,
@@ -753,60 +593,11 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
           ),
 
           // 3 ô khay Next
->>>>>>> 9c029f433040f9f1582aba761103e9d6623e2aeb
           for (int i = 0; i < 3; i++)
             Positioned(
               left: scaler.traySlotRects[i].left,
               top: scaler.traySlotRects[i].top - scaler.zoneDRect.top + 4,
               width: scaler.traySlotRects[i].width,
-<<<<<<< HEAD
-              height: scaler.traySlotRects[i].height,
-              child: Builder(
-                builder: (context) {
-                  final shape = _controller.smartSpawner.traySlots[i];
-                  final activeBus = _controller.busStation.activeBus;
-                  final bool isTargetBlock = shape != null &&
-                      activeBus != null &&
-                      shape.tiles.any((t) => activeBus.isRainbow || t.petColor == activeBus.color);
-
-                  return Container(
-                    decoration: BoxDecoration(
-                      color: isTargetBlock
-                          ? const Color(0xFF386638).withValues(alpha: 0.85)
-                          : const Color(0xFF1E381F).withValues(alpha: 0.60),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: isTargetBlock
-                            ? const Color(0xFFFFD84D)
-                            : const Color(0xFF437546).withValues(alpha: 0.75),
-                        width: isTargetBlock ? 2.0 : 1.2,
-                      ),
-                      boxShadow: [
-                        if (isTargetBlock)
-                          BoxShadow(
-                            color: const Color(0xFFFFD84D).withValues(alpha: 0.35),
-                            blurRadius: 8,
-                            spreadRadius: 1,
-                          ),
-                      ],
-                    ),
-                    child: Stack(
-                      children: [
-                        if (shape != null && _draggingSlotIndex != i)
-                          Center(
-                            child: Padding(
-                              padding: const EdgeInsets.all(4.0),
-                              child: ScaleTransition(
-                                scale: _trayRefillScale,
-                                child: FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: _buildTrayShapeWidget(
-                                    shape,
-                                    scaler.cellSize,
-                                    activeSkin,
-                                  ),
-                                ),
-=======
               height: scaler.traySlotRects[i].height - 6,
               child: Container(
                 decoration: BoxDecoration(
@@ -829,61 +620,28 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
                                 _controller.smartSpawner.traySlots[i]!,
                                 scaler.cellSize,
                                 activeSkin,
->>>>>>> 9c029f433040f9f1582aba761103e9d6623e2aeb
                               ),
                             ),
                           ),
-                        if (isTargetBlock && _draggingSlotIndex != i)
-                          Positioned(
-                            top: 3,
-                            right: 4,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF2B1D14),
-                                borderRadius: BorderRadius.circular(4),
-                                border: Border.all(color: const Color(0xFFFFD84D), width: 0.8),
-                              ),
-                              child: const Text(
-                                '🚌 LÊN XE',
-                                style: TextStyle(
-                                  color: Color(0xFFFFD84D),
-                                  fontSize: 6.5,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  );
-                },
+                        ),
+                      )
+                    : null,
               ),
             ),
 
-<<<<<<< HEAD
-          // 5. Nút Kỹ Năng Bên Phải (La Bàn Gió) có quầng hào quang xanh ngọc + nhãn chữ bên dưới
-=======
           // Nút Cổ vật phải: La Bàn Gió
->>>>>>> 9c029f433040f9f1582aba761103e9d6623e2aeb
           Positioned(
-            left: scaler.compassButtonRect.left - 2,
-            top: scaler.compassButtonRect.top - scaler.zoneDRect.top - 4,
-            width: scaler.compassButtonRect.width + 4,
-            height: scaler.compassButtonRect.height + 24,
+            left: scaler.compassButtonRect.left,
+            top: scaler.compassButtonRect.top - scaler.zoneDRect.top,
+            width: scaler.compassButtonRect.width,
+            height: scaler.compassButtonRect.height,
             child: _buildSkillButton(
               icon: '🧭',
-<<<<<<< HEAD
-              title: 'La Bàn Gió',
-=======
               title: 'Relics',
->>>>>>> 9c029f433040f9f1582aba761103e9d6623e2aeb
               charge: _controller.actionQueue.compassCharge,
               maxCharge: _controller.actionQueue.compassMaxCharge,
               isActive: false,
-              glowColor: const Color(0xFF00E5FF),
-              gradientColors: [const Color(0xFF0288D1), const Color(0xFF01579B)],
-              ringColors: [const Color(0xFFB3E5FC), const Color(0xFF4FC3F7)],
+              glowColor: const Color(0xFF4FC3F7),
               onTap: () => _controller.activateCompass(),
             ),
           ),
@@ -899,85 +657,21 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
     required int maxCharge,
     required bool isActive,
     required Color glowColor,
-    required List<Color> gradientColors,
-    required List<Color> ringColors,
     required VoidCallback onTap,
   }) {
     final bool isReady = charge >= maxCharge;
+    final String skillName = icon == '🔨' ? 'Búa Rèn Lửa' : 'La Bàn Gió';
     final String statusDesc = isReady ? 'Sẵn sàng kích hoạt' : 'Tích lũy $charge/$maxCharge';
 
     return Semantics(
       button: true,
       enabled: isReady || isActive,
-      label: '$title ($statusDesc)',
+      label: '$skillName ($statusDesc)',
       child: GestureDetector(
         onTap: onTap,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-<<<<<<< HEAD
-            // Nút tròn 3D có viền sáng hào quang (Glowing halo ring)
-            Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: isActive
-                      ? [glowColor, gradientColors.last]
-                      : gradientColors,
-                ),
-                border: Border.all(
-                  color: ringColors.first,
-                  width: isReady ? 3.0 : 2.2,
-                ),
-                boxShadow: [
-                  const BoxShadow(color: Colors.black38, blurRadius: 5, offset: Offset(0, 3)),
-                  BoxShadow(
-                    color: (isReady ? glowColor : ringColors.last).withValues(alpha: 0.55),
-                    blurRadius: 8,
-                    spreadRadius: 1,
-                  ),
-                ],
-              ),
-              child: Stack(
-                children: [
-                  Center(
-                    child: Text(icon, style: const TextStyle(fontSize: 22)),
-                  ),
-                  // Huy hiệu số lượt sạc ở góc dưới phải nút
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1F1A17),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.white70, width: 1.0),
-                      ),
-                      child: Text(
-                        '$charge',
-                        style: const TextStyle(
-                          color: Color(0xFFFFD84D),
-                          fontSize: 9.0,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 3),
-            // Tên kỹ năng chuẩn ảnh mẫu (Búa Rèn Lửa / La Bàn Gió)
-            Text(
-              title,
-              maxLines: 1,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 9.5,
-=======
             Text(
               title,
               style: const TextStyle(
@@ -1024,11 +718,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
               style: TextStyle(
                 color: isReady ? const Color(0xFFFFD84D) : const Color(0xFFFFF8E1),
                 fontSize: 9.0,
->>>>>>> 9c029f433040f9f1582aba761103e9d6623e2aeb
                 fontWeight: FontWeight.w900,
-                shadows: [
-                  Shadow(color: Colors.black, offset: Offset(0, 1), blurRadius: 2),
-                ],
               ),
             ),
           ],
@@ -1088,7 +778,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> with TickerProviderStat
 
     setState(() {
       _currentDragPoint = point;
-      final cell = scaler.getShapeAnchorCellFromTouch(point, _draggingShape!);
+      final cell = scaler.getGridCellFromTouch(point);
       _hoverCell = cell;
       if (cell != null) {
         HapticsManager.instance.onHoverCell(cell.r, cell.c);

@@ -34,41 +34,28 @@ class BusStationPainter extends CustomPainter {
   final ViewportScaler scaler;
   final BusData? activeBus;
   final BusData? nextBus;
-  final BusData? departingBus;
-  final double departureProgress;
-  final double arrivalProgress;
-  final double busBounceProgress;
-  final int totalBusesInLevel;
-  final int totalDispatchedCount;
-  final List<BusData> queuedBuses;
   final List<HoldingDockSlot> holdingDock;
   final int score;
   final int currentLevel;
   final List<FlyingPetArc> flyingPets;
   final GameSkinTheme skin;
+  final int winStreak;
 
   BusStationPainter({
     required this.scaler,
     required this.activeBus,
     required this.nextBus,
-    this.departingBus,
-    this.departureProgress = 1.0,
-    this.arrivalProgress = 1.0,
-    this.busBounceProgress = 1.0,
-    this.totalBusesInLevel = 1,
-    this.totalDispatchedCount = 0,
-    this.queuedBuses = const [],
     required this.holdingDock,
     required this.score,
     required this.currentLevel,
     this.flyingPets = const [],
     this.skin = GameSkinTheme.kawaiiPets,
+    this.winStreak = 3,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     _drawParkBackgroundAndRoad(canvas, size);
-    _drawActiveBus(canvas);
     _drawNextBusQueue(canvas);
     _drawActiveBus(canvas);
     _drawTopScoreHUD(canvas);
@@ -91,40 +78,86 @@ class BusStationPainter extends CustomPainter {
     canvas.drawRect(fullRect, parkPaint);
 
     final rect = scaler.zoneARect;
+
+    // Đồi cỏ nhấp nhô nhẹ tạo chiều sâu diorama
     canvas.drawOval(
-      Rect.fromCenter(center: Offset(rect.left + rect.width * 0.25, rect.top + 18), width: rect.width * 0.6, height: 42),
-      Paint()..color = const Color(0xFF79C750),
-    );
-    canvas.drawOval(
-      Rect.fromCenter(center: Offset(rect.right - rect.width * 0.20, rect.top + 34), width: rect.width * 0.55, height: 46),
-      Paint()..color = const Color(0xFF6FBF47),
+      Rect.fromCenter(
+        center: Offset(rect.left + rect.width * 0.35, rect.top + 26),
+        width: rect.width * 0.75,
+        height: 60,
+      ),
+      Paint()..color = const Color(0xFF80D24E),
     );
 
-    // Con đường nhựa xám công viên ở nửa dưới Zone A
-    final roadTop = rect.top + rect.height * 0.36;
-    final roadPath = Path()
-      ..moveTo(rect.left, roadTop)
-      ..quadraticBezierTo(
-        rect.left + rect.width * 0.5,
-        rect.top + rect.height * 0.42,
-        rect.right,
-        rect.top + rect.height * 0.32,
+    // ==========================================
+    // VẼ ĐƯỜNG VÒNG XUYẾN HAIRPIN (U-TURN LOOP) 2.5D
+    // ==========================================
+    final double loopRight = rect.right + 10.0;
+    final double loopLeft = rect.left + 22.0;
+    final double upperRoadY = rect.top + rect.height * 0.32;
+    final double lowerRoadY = rect.top + rect.height * 0.76;
+    final double loopRadius = (lowerRoadY - upperRoadY) / 2;
+    final double loopCenterY = (upperRoadY + lowerRoadY) / 2;
+    final double loopCenterX = loopLeft + loopRadius;
+
+    // A. Lề đường bê tông ngoài (Curb / Sidewalk)
+    final curbPath = Path()
+      ..moveTo(loopRight, upperRoadY - 24)
+      ..lineTo(loopCenterX, upperRoadY - 24)
+      ..arcToPoint(
+        Offset(loopCenterX, lowerRoadY + 24),
+        radius: Radius.circular(loopRadius + 24),
+        clockwise: false,
       )
-      ..lineTo(rect.right, rect.bottom - 2)
-      ..lineTo(rect.left, rect.bottom - 2)
+      ..lineTo(loopRight, lowerRoadY + 24)
+      ..lineTo(loopRight, lowerRoadY - 14)
+      ..lineTo(loopCenterX, lowerRoadY - 14)
+      ..arcToPoint(
+        Offset(loopCenterX, upperRoadY + 14),
+        radius: Radius.circular(loopRadius - 14),
+        clockwise: true,
+      )
+      ..lineTo(loopRight, upperRoadY + 14)
       ..close();
 
-    // Lề đường sáng nổi
+    // Bóng đổ lề đường
     canvas.drawPath(
-      roadPath.shift(const Offset(0, -3)),
-      Paint()..color = const Color(0xFFD7CCC8),
+      curbPath.shift(const Offset(0, 4)),
+      Paint()
+        ..color = Colors.black.withValues(alpha: 0.18)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
     );
-    canvas.drawPath(roadPath, Paint()..color = const Color(0xFF455A64));
+    canvas.drawPath(curbPath, Paint()..color = const Color(0xFFCFD8DC));
+    canvas.drawPath(
+      curbPath,
+      Paint()
+        ..color = const Color(0xFFB0BEC5)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5,
+    );
 
-    // Đường chân lề dưới
-    canvas.drawLine(
-      Offset(rect.left, rect.bottom - 2),
-      Offset(rect.right, rect.bottom - 2),
+    // B. Mặt đường nhựa xám đậm (Asphalt Track)
+    final roadPath = Path()
+      ..moveTo(loopRight, upperRoadY - 18)
+      ..lineTo(loopCenterX, upperRoadY - 18)
+      ..arcToPoint(
+        Offset(loopCenterX, lowerRoadY + 18),
+        radius: Radius.circular(loopRadius + 18),
+        clockwise: false,
+      )
+      ..lineTo(loopRight, lowerRoadY + 18)
+      ..lineTo(loopRight, lowerRoadY - 10)
+      ..lineTo(loopCenterX, lowerRoadY - 10)
+      ..arcToPoint(
+        Offset(loopCenterX, upperRoadY + 10),
+        radius: Radius.circular(loopRadius - 10),
+        clockwise: true,
+      )
+      ..lineTo(loopRight, upperRoadY + 10)
+      ..close();
+
+    canvas.drawPath(
+      roadPath,
       Paint()
         ..shader = const LinearGradient(
           begin: Alignment.topCenter,
@@ -133,25 +166,43 @@ class BusStationPainter extends CustomPainter {
         ).createShader(rect),
     );
 
-    // Vạch kẻ đường vàng đứt nét #FFD84D
+    // C. Vạch kẻ đường vàng/trắng đứt nét ở tâm cua vòng lặp
     final dashPaint = Paint()
       ..color = const Color(0xFFFFD54F)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.4
       ..strokeCap = StrokeCap.round;
-    const double dashWidth = 18.0;
-    const double dashGap = 14.0;
-    double x = rect.left + 8;
-    while (x < rect.right) {
-      final yStart = rect.top + rect.height * 0.67 - (x / math.max(1, rect.width)) * 5.0;
-      canvas.drawLine(Offset(x, yStart), Offset(x + dashWidth, yStart - 0.5), dashPaint);
-      x += dashWidth + dashGap;
+
+    final dashPath = Path()
+      ..moveTo(loopRight, upperRoadY - 4)
+      ..lineTo(loopCenterX, upperRoadY - 4)
+      ..arcToPoint(
+        Offset(loopCenterX, lowerRoadY + 4),
+        radius: Radius.circular(loopRadius + 4),
+        clockwise: false,
+      )
+      ..lineTo(loopRight, lowerRoadY + 4);
+
+    // Vẽ vạch đứt nét
+    final dashMetrics = dashPath.computeMetrics();
+    for (final metric in dashMetrics) {
+      double distance = 0.0;
+      while (distance < metric.length) {
+        final double len = math.min(14.0, metric.length - distance);
+        final segment = metric.extractPath(distance, distance + len);
+        canvas.drawPath(segment, dashPaint);
+        distance += 14.0 + 12.0; // chiều dài vạch + khoảng trống
+      }
     }
 
-    // Cây xanh công viên nhiều lớp lá ở mép trên trái
-    _drawParkTree(canvas, Offset(rect.left + 26, rect.top + 26), 15);
-    _drawParkTree(canvas, Offset(rect.left + 56, rect.top + 20), 11);
-    _drawParkTree(canvas, Offset(rect.right - 26, rect.top + 38), 12);
+    // D. Cây xanh diorama 3D hình cầu bông xốp xung quanh đường
+    _draw3DParkTree(canvas, Offset(rect.left + 22, rect.top + 28), 16);
+    _draw3DParkTree(canvas, Offset(rect.left + 54, rect.top + 20), 12);
+    _draw3DParkTree(canvas, Offset(rect.right - 24, rect.top + 34), 14);
+    _draw3DParkTree(canvas, Offset(loopCenterX - 6, loopCenterY + 1), 13);
+
+    // E. Cột đèn đường công viên
+    _drawStreetLamp(canvas, Offset(rect.left + 14, rect.top + rect.height * 0.44));
   }
 
   void _draw3DParkTree(Canvas canvas, Offset center, double radius) {
@@ -175,23 +226,36 @@ class BusStationPainter extends CustomPainter {
     );
   }
 
-  /// 2. Vẽ Xe Buýt 2.5D Đang Đỗ (Active Bus):
-  /// - Thân xe bo tròn có độ dày cạnh dưới
-  /// - Biển hiệu nổi trên nóc hiển thị rõ e.g. "Corgi Bus 3/4"
-  /// - 3 ô cửa sổ kính xanh nhạt có đầu các bé thú cưng ngồi bên trong
-  /// - 2 bánh xe đen có mâm bạc và đèn pha vàng
+  void _drawStreetLamp(Canvas canvas, Offset base) {
+    // Trụ kim loại đèn đường
+    final polePaint = Paint()..color = const Color(0xFF455A64)..strokeWidth = 2.2;
+    canvas.drawLine(base, base + const Offset(0, -22), polePaint);
+    canvas.drawLine(base + const Offset(0, -22), base + const Offset(6, -24), polePaint);
+    // Đầu đèn vàng phát sáng
+    canvas.drawCircle(base + const Offset(6, -24), 3.5, Paint()..color = const Color(0xFFFFEE58));
+    canvas.drawCircle(
+      base + const Offset(6, -24),
+      6.0,
+      Paint()
+        ..color = const Color(0xFFFFEE58).withValues(alpha: 0.35)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
+    );
+  }
+
+  /// 2. Vẽ Xe Buýt Đang Đỗ (Active Bus) theo phối cảnh 2.5D Isometric Toy Bus
   void _drawActiveBus(Canvas canvas) {
     if (activeBus == null) return;
 
     final bus = activeBus!;
     final rect = scaler.zoneARect;
-    final double busWidth = math.min(rect.width * 0.50, 186.0);
-    final double busHeight = math.min(rect.height * 0.54, 82.0);
-    final double busLeft = rect.left + 16.0;
-    final double busTop = rect.top + rect.height * 0.37;
 
-    final Rect busRect = Rect.fromLTWH(busLeft, busTop, busWidth, busHeight);
-    final RRect busRRect = RRect.fromRectAndRadius(busRect, const Radius.circular(13));
+    // Tọa độ xe buýt trên nhánh dưới của đường cua
+    final double busWidth = math.min(rect.width * 0.48, 172.0);
+    final double busHeight = math.min(rect.height * 0.46, 72.0);
+    final double busLeft = rect.left + rect.width * 0.18;
+    final double busTop = rect.top + rect.height * 0.50;
+
+    final busRect = Rect.fromLTWH(busLeft, busTop, busWidth, busHeight);
 
     // 1. Bóng đổ gầm xe 3D
     canvas.drawRRect(
@@ -200,15 +264,15 @@ class BusStationPainter extends CustomPainter {
         const Radius.circular(8),
       ),
       Paint()
-        ..color = Colors.black38
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
+        ..color = Colors.black.withValues(alpha: 0.32)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
     );
 
-    // Lớp đế 3D sẫm tạo độ dày cạnh dưới thân xe
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(busRect.shift(const Offset(0, 5)), const Radius.circular(13)),
-      Paint()..color = bus.isRainbow ? const Color(0xFF4A148C) : bus.color.darkColor,
-    );
+    // 2. Thân xe 2.5D có góc nghiêng phối cảnh:
+    // A. Mặt sườn xe (Main Body Chassis)
+    const Radius r = Radius.circular(12);
+    final RRect chassis3D = RRect.fromRectAndRadius(busRect.shift(const Offset(0, 6)), r);
+    canvas.drawRRect(chassis3D, Paint()..color = bus.isRainbow ? const Color(0xFF4A148C) : bus.color.darkColor);
 
     final RRect chassisMain = RRect.fromRectAndRadius(busRect, r);
     if (bus.isRainbow) {
@@ -227,56 +291,37 @@ class BusStationPainter extends CustomPainter {
           ).createShader(busRect),
       );
     } else {
-      final bodyPaint = Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [bus.color.topGradientStart, bus.color.topGradientEnd],
-        ).createShader(busRect);
-      canvas.drawRRect(busRRect, bodyPaint);
+      canvas.drawRRect(
+        chassisMain,
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [bus.color.topGradientStart, bus.color.topGradientEnd],
+          ).createShader(busRect),
+      );
     }
 
-    // Dải bóng kính nhẹ dọc nóc thân xe
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(busLeft + 8, busTop + 3, busWidth - 16, 6),
-        const Radius.circular(3),
-      ),
-      Paint()..color = Colors.white.withValues(alpha: 0.32),
+    // B. Nóc xe vát cạnh bóng bẩy (3D Roof Bevel)
+    final Path roofPath = Path()
+      ..moveTo(busLeft + 10, busTop + 3)
+      ..lineTo(busRect.right - 10, busTop + 3)
+      ..lineTo(busRect.right - 14, busTop + 10)
+      ..lineTo(busLeft + 14, busTop + 10)
+      ..close();
+    canvas.drawPath(
+      roofPath,
+      Paint()..color = Colors.white.withValues(alpha: 0.38),
     );
 
-    // Đường chỉ thân xe & cản trước/sau
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(busLeft + 2, busRect.bottom - 10, busWidth - 4, 4),
-        const Radius.circular(2),
-      ),
-      Paint()..color = Colors.white.withValues(alpha: 0.25),
-    );
+    // ĐÔI TAI THÚ CƯNG 3D TRÊN NÓC XE BUÝT (Corgi / Cat Ears)
+    _drawBusRoofEars(canvas, Offset(busRect.right - 18, busTop + 3), bus.color);
 
-    // Đèn pha vàng rực rỡ phía đầu xe (bên phải xe hướng ra trạm)
-    final Offset headlightCenter = Offset(busRect.right - 3, busRect.bottom - 16);
-    canvas.drawOval(
-      Rect.fromCenter(center: headlightCenter + const Offset(6, 0), width: 16, height: 10),
-      Paint()
-        ..color = const Color(0xFFFFEE58).withValues(alpha: 0.35)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromCenter(center: headlightCenter, width: 7, height: 9),
-        const Radius.circular(3),
-      ),
-      Paint()..color = const Color(0xFFFFEE58),
-    );
-
-    // 3 Ô CỬA SỔ KÍNH XANH NHẠT (#CDEFFF)
-    const int windowCount = 3;
-    final double windowsAreaLeft = busLeft + 10;
-    final double windowsAreaWidth = busWidth - 26;
-    const double gap = 5.0;
-    final double singleWinW = (windowsAreaWidth - gap * (windowCount - 1)) / windowCount;
-    final double winTop = busTop + 11;
+    // C. 3 Cửa sổ kính lớn xanh biếc (#CDEFFF) có viền nổi
+    const int winCount = 3;
+    final double winAreaLeft = busLeft + 10;
+    final double winAreaW = busWidth - 36;
+    final double winW = (winAreaW - 6 * (winCount - 1)) / winCount;
     final double winH = busHeight * 0.44;
     final double winY = busTop + 12;
 
@@ -312,74 +357,141 @@ class BusStationPainter extends CustomPainter {
           bus.isRainbow ? PetColor.values[i % PetColor.values.length] : bus.color,
         );
       }
-
-      // Vệt sáng phản chiếu chéo trên mặt kính
-      final Path sheen = Path()
-        ..moveTo(winRect.left + 3, winRect.top)
-        ..lineTo(winRect.left + 10, winRect.top)
-        ..lineTo(winRect.left + 3, winRect.bottom)
-        ..lineTo(winRect.left - 2, winRect.bottom)
-        ..close();
-      canvas.drawPath(sheen, Paint()..color = Colors.white.withValues(alpha: 0.35));
-
-      canvas.restore();
-
-      // Viền khung cửa sổ
-      canvas.drawRRect(
-        winRRect,
-        Paint()
-          ..color = const Color(0xFF0288D1).withValues(alpha: 0.8)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.4,
-      );
     }
 
-    // BIỂN HIỆU NỔI TRÊN NÓC XE: e.g. "Corgi Bus 3/4"
-    final double plaqueW = math.max(busWidth * 0.78, 126.0);
-    final Rect plaqueRect = Rect.fromLTWH(
-      busRect.center.dx - plaqueW / 2,
-      busTop - 13,
-      plaqueW,
-      20,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(plaqueRect.shift(const Offset(0, 2)), const Radius.circular(10)),
-      Paint()..color = Colors.black38,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(plaqueRect, const Radius.circular(10)),
-      Paint()..color = const Color(0xFF2B1D14),
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(plaqueRect, const Radius.circular(10)),
+    // D. Đèn pha đôi vàng rực rỡ phía đầu xe
+    final Offset lightCenter = Offset(busRect.right - 4, busRect.bottom - 16);
+    // Tia sáng đèn pha
+    canvas.drawOval(
+      Rect.fromCenter(center: lightCenter + const Offset(10, 0), width: 22, height: 12),
       Paint()
-        ..color = const Color(0xFFFFD84D)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.4,
+        ..color = const Color(0xFFFFEE58).withValues(alpha: 0.35)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
     );
+    canvas.drawCircle(lightCenter, 4.5, Paint()..color = const Color(0xFFFFEE58));
+    canvas.drawCircle(lightCenter, 2.0, Paint()..color = Colors.white);
 
-    final String labelText = bus.isRainbow
-        ? '🌈 Rainbow ${bus.capacityDisplay}'
-        : '${bus.name} ${bus.capacityDisplay}';
-    final textSpan = TextSpan(
-      text: labelText,
+    // E. Bánh xe lốp cao su đen + mâm bạc thể thao
+    _drawWheelWithSilverRim(canvas, Offset(busLeft + 24, busRect.bottom + 2), 8.5);
+    _drawWheelWithSilverRim(canvas, Offset(busRect.right - 26, busRect.bottom + 2), 8.5);
+
+    // F. Biển hiệu xe buýt nổi trên nóc: "Corgi Bus 3/4"
+    final signRect = Rect.fromCenter(
+      center: Offset(busRect.center.dx, busTop - 6),
+      width: busWidth * 0.72,
+      height: 18,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(signRect.shift(const Offset(0, 2)), const Radius.circular(9)),
+      Paint()..color = const Color(0xFF3B2314),
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(signRect, const Radius.circular(9)),
+      Paint()..color = const Color(0xFFFFD84D),
+    );
+    final signText = TextSpan(
+      text: '${bus.name} ${bus.currentPassengers}/${bus.capacity}',
       style: const TextStyle(
-        color: Colors.white,
-        fontSize: 10.5,
+        color: Color(0xFF3B2314),
+        fontSize: 9.5,
         fontWeight: FontWeight.w900,
         letterSpacing: 0.3,
       ),
     );
-    final textPainter = TextPainter(text: textSpan, textDirection: TextDirection.ltr);
-    textPainter.layout();
-    textPainter.paint(
+    final signPainter = TextPainter(text: signText, textDirection: TextDirection.ltr)..layout();
+    signPainter.paint(
       canvas,
-      Offset(plaqueRect.center.dx - textPainter.width / 2, plaqueRect.center.dy - textPainter.height / 2),
+      Offset(signRect.center.dx - signPainter.width / 2, signRect.center.dy - signPainter.height / 2),
+    );
+  }
+
+  /// 3. Vẽ Xe Chờ (Next Bus) đang xếp hàng ở nhánh trên của đường cua
+  void _drawNextBusQueue(Canvas canvas) {
+    if (nextBus == null) return;
+
+    final bus = nextBus!;
+    final rect = scaler.zoneARect;
+
+    // Nằm ở nhánh trên đường cua, hướng chếch bên phải
+    final double busWidth = 78.0;
+    final double busHeight = math.min(rect.height * 0.38, 54.0);
+    final double busLeft = rect.right - busWidth - 14.0;
+    final double busTop = rect.top + rect.height * 0.22;
+
+    final busRect = Rect.fromLTWH(busLeft, busTop, busWidth, busHeight);
+
+    // Bóng đổ gầm
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(busRect.shift(const Offset(0, 4)), const Radius.circular(9)),
+      Paint()..color = Colors.black.withValues(alpha: 0.25),
     );
 
-    // 2 BÁNH XE ĐEN CÓ MÂM BẠC
-    _drawWheelWithSilverRim(canvas, Offset(busLeft + 32, busRect.bottom + 1), 10.5);
-    _drawWheelWithSilverRim(canvas, Offset(busRect.right - 32, busRect.bottom + 1), 10.5);
+    // Thân xe
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(busRect.shift(const Offset(0, 3)), const Radius.circular(9)),
+      Paint()..color = bus.color.darkColor,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(busRect, const Radius.circular(9)),
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [bus.color.topGradientStart, bus.color.topGradientEnd],
+        ).createShader(busRect),
+    );
+
+    // 2 cửa sổ kính
+    for (int i = 0; i < 2; i++) {
+      final wRect = Rect.fromLTWH(busLeft + 8 + i * 32, busTop + 7, 26, busHeight * 0.42);
+      canvas.drawRRect(RRect.fromRectAndRadius(wRect, const Radius.circular(4)), Paint()..color = const Color(0xFFDDF5FF));
+    }
+
+    // Biển hiệu "NEXT"
+    final pillRect = Rect.fromCenter(center: Offset(busRect.center.dx, busTop - 4), width: 56, height: 13);
+    canvas.drawRRect(RRect.fromRectAndRadius(pillRect, const Radius.circular(7)), Paint()..color = const Color(0xFF2B1D14));
+    final nextText = TextPainter(
+      text: TextSpan(
+        text: 'NEXT: ${bus.color.displayName}',
+        style: const TextStyle(color: Color(0xFFFFD84D), fontSize: 8.0, fontWeight: FontWeight.bold),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    nextText.paint(canvas, Offset(pillRect.center.dx - nextText.width / 2, pillRect.center.dy - nextText.height / 2));
+
+    // Đôi tai mèo 3D trên nóc xe chờ
+    _drawBusRoofEars(canvas, Offset(busLeft + 14, busTop + 2), bus.color);
+
+    // Bánh xe
+    _drawWheelWithSilverRim(canvas, Offset(busLeft + 16, busRect.bottom + 1), 6.5);
+    _drawWheelWithSilverRim(canvas, Offset(busRect.right - 16, busRect.bottom + 1), 6.5);
+  }
+
+  void _drawBusRoofEars(Canvas canvas, Offset pos, PetColor color) {
+    for (final sign in [-1.0, 1.0]) {
+      final earCenter = Offset(pos.dx + sign * 10, pos.dy - 6);
+      final earPath = Path()
+        ..moveTo(earCenter.dx - 6, pos.dy)
+        ..lineTo(earCenter.dx, earCenter.dy - 7)
+        ..lineTo(earCenter.dx + 6, pos.dy)
+        ..close();
+      canvas.drawPath(earPath, Paint()..color = color.topGradientStart);
+      canvas.drawPath(
+        earPath,
+        Paint()
+          ..color = color.darkColor
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.2,
+      );
+
+      // Lòng tai hồng
+      final inner = Path()
+        ..moveTo(earCenter.dx - 3, pos.dy)
+        ..lineTo(earCenter.dx, earCenter.dy - 4)
+        ..lineTo(earCenter.dx + 3, pos.dy)
+        ..close();
+      canvas.drawPath(inner, Paint()..color = color.cheekColor);
+    }
   }
 
   void _drawWheelWithSilverRim(Canvas canvas, Offset center, double radius) {
@@ -415,18 +527,25 @@ class BusStationPainter extends CustomPainter {
     canvas.drawCircle(center + Offset(radius * 0.30, -radius * 0.18), radius * 0.07, Paint()..color = Colors.white);
   }
 
-  /// 3. Vẽ chiếc Xe Chờ (Next Bus) ở góc phải
-  void _drawNextBusQueue(Canvas canvas) {
-    if (nextBus == null) return;
-
-    final bus = nextBus!;
+  /// 4. HUD Trên Cùng: Biển gỗ treo dây "Level 48" + Lửa Streak x3 + Huy hiệu Tiền 3D & Cài đặt
+  void _drawTopScoreHUD(Canvas canvas) {
     final rect = scaler.zoneARect;
-    const double busWidth = 82.0;
-    final double busHeight = math.min(rect.height * 0.44, 62.0);
-    final double busLeft = rect.right - busWidth - 10.0;
-    final double busTop = rect.top + rect.height * 0.44;
 
-    final busRect = Rect.fromLTWH(busLeft, busTop, busWidth, busHeight);
+    // ==========================================
+    // A. BIỂN GỖ TREO 2 DÂY THỪNG: "Level 48"
+    // ==========================================
+    final double boardLeft = rect.left + 14.0;
+    final double boardTop = rect.top + 8.0;
+    const double boardW = 76.0;
+    const double boardH = 34.0;
+    final boardRect = Rect.fromLTWH(boardLeft, boardTop, boardW, boardH);
+
+    // 2 dây thừng treo lên mép trên màn hình
+    final ropePaint = Paint()
+      ..color = const Color(0xFF6D4226)
+      ..strokeWidth = 2.0;
+    canvas.drawLine(Offset(boardLeft + 16, rect.top - 4), Offset(boardLeft + 16, boardTop), ropePaint);
+    canvas.drawLine(Offset(boardLeft + boardW - 16, rect.top - 4), Offset(boardLeft + boardW - 16, boardTop), ropePaint);
 
     // Khối biển gỗ 2.5D caramen
     canvas.drawRRect(
@@ -442,196 +561,203 @@ class BusStationPainter extends CustomPainter {
           colors: [Color(0xFFD49B6A), Color(0xFFB37447)],
         ).createShader(boardRect),
     );
-
-    // Đèn pha vàng nhỏ
     canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(busLeft + 1, busRect.bottom - 14, 5, 6),
-        const Radius.circular(2),
-      ),
-      Paint()..color = const Color(0xFFFFEE58),
+      RRect.fromRectAndRadius(boardRect.deflate(1.2), const Radius.circular(7)),
+      Paint()
+        ..color = const Color(0xFFE8B88A).withValues(alpha: 0.6)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0,
     );
 
-    // 2 cửa sổ kính xanh nhạt
-    for (int i = 0; i < 2; i++) {
-      final winRect = Rect.fromLTWH(busLeft + 10 + i * 33, busTop + 8, 28, busHeight * 0.42);
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(winRect, const Radius.circular(4)),
-        Paint()..color = const Color(0xFFD6F3FF),
-      );
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(winRect, const Radius.circular(4)),
-        Paint()
-          ..color = const Color(0xFF0288D1)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.0,
-      );
-    }
-
-    // Chữ "NEXT"
-    final pillRect = Rect.fromLTWH(busLeft + 6, busTop - 10, busWidth - 12, 14);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(pillRect, const Radius.circular(7)),
-      Paint()..color = const Color(0xFF2B1D14),
+    final lvlText = TextSpan(
+      children: [
+        const TextSpan(
+          text: 'Level\n',
+          style: TextStyle(
+            color: Color(0xFF4A2810),
+            fontSize: 9.0,
+            fontWeight: FontWeight.bold,
+            height: 1.0,
+          ),
+        ),
+        TextSpan(
+          text: currentLevel == 0 ? 'FTUE' : '$currentLevel',
+          style: const TextStyle(
+            color: Color(0xFF3B1E08),
+            fontSize: 16.0,
+            fontWeight: FontWeight.w900,
+            height: 1.1,
+          ),
+        ),
+      ],
     );
-    final textSpan = TextSpan(
-      text: 'NEXT: ${bus.color.displayName}',
-      style: const TextStyle(
-        color: Color(0xFFFFD84D),
-        fontSize: 8.5,
-        fontWeight: FontWeight.bold,
-      ),
-    );
-    final textPainter = TextPainter(text: textSpan, textDirection: TextDirection.ltr);
-    textPainter.layout();
-    textPainter.paint(
-      canvas,
-      Offset(pillRect.center.dx - textPainter.width / 2, pillRect.center.dy - textPainter.height / 2),
-    );
+    final lvlPainter = TextPainter(
+      text: lvlText,
+      textAlign: TextAlign.center,
+      textDirection: TextDirection.ltr,
+    )..layout(minWidth: boardW, maxWidth: boardW);
+    lvlPainter.paint(canvas, Offset(boardLeft, boardTop + 2));
 
-    // Bánh xe đen mâm bạc
-    _drawWheelWithSilverRim(canvas, Offset(busLeft + 18, busRect.bottom + 1), 7.5);
-    _drawWheelWithSilverRim(canvas, Offset(busRect.right - 18, busRect.bottom + 1), 7.5);
-  }
-
-  /// 4. HUD Điểm số & Màn chơi ở góc trên
-  void _drawTopScoreHUD(Canvas canvas) {
-    final rect = scaler.zoneARect;
-    const double hudWidth = 118.0;
-    const double hudHeight = 28.0;
-    final hudRect = Rect.fromLTWH(rect.right - hudWidth - 12, rect.top + 8, hudWidth, hudHeight);
+    // ==========================================
+    // B. NGỌN LỬA CHUỖI THẮNG "Streak x3"
+    // ==========================================
+    final streakCenter = Offset(rect.left + rect.width * 0.44, rect.top + 22.0);
+    final streakPill = Rect.fromCenter(center: streakCenter, width: 84, height: 26);
 
     canvas.drawRRect(
-      RRect.fromRectAndRadius(hudRect.shift(const Offset(0, 2)), const Radius.circular(14)),
+      RRect.fromRectAndRadius(streakPill.shift(const Offset(0, 2)), const Radius.circular(13)),
       Paint()..color = Colors.black26,
     );
-    // Tấm gỗ với gradient vân gỗ ấm áp
     canvas.drawRRect(
-      RRect.fromRectAndRadius(hudRect, const Radius.circular(14)),
-      Paint()..color = const Color(0xFF2B1D14),
+      RRect.fromRectAndRadius(streakPill, const Radius.circular(13)),
+      Paint()..color = const Color(0xDD21292E),
     );
     canvas.drawRRect(
-      RRect.fromRectAndRadius(hudRect, const Radius.circular(14)),
+      RRect.fromRectAndRadius(streakPill, const Radius.circular(13)),
       Paint()
-        ..color = const Color(0xFF4A2E1B)
+        ..color = const Color(0xFFFF9800)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.5,
+        ..strokeWidth = 1.4,
     );
 
+    final flameText = TextSpan(
+      children: [
+        const TextSpan(text: '🔥 ', style: TextStyle(fontSize: 12)),
+        TextSpan(
+          text: 'Streak x${math.max(1, winStreak)}',
+          style: const TextStyle(
+            color: Color(0xFFFFD54F),
+            fontSize: 10.5,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ],
+    );
+    final flamePainter = TextPainter(text: flameText, textDirection: TextDirection.ltr)..layout();
+    flamePainter.paint(
+      canvas,
+      Offset(streakCenter.dx - flamePainter.width / 2, streakCenter.dy - flamePainter.height / 2),
+    );
+
+    // ==========================================
+    // C. HUY HIỆU XU VÀNG & NGỌC XANH & CÀI ĐẶT Ở GÓC PHẢI
+    // ==========================================
+    final double rightEdge = rect.right - 10.0;
+
+    // 1. Cài đặt / Cúp vàng
+    final settingsCenter = Offset(rightEdge - 16, rect.top + 20);
+    canvas.drawCircle(settingsCenter + const Offset(0, 2), 15, Paint()..color = Colors.black26);
+    canvas.drawCircle(settingsCenter, 15, Paint()..color = const Color(0xFF263238));
+    canvas.drawCircle(
+      settingsCenter,
+      15,
+      Paint()
+        ..color = const Color(0xFFFFD84D)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.4,
+    );
     final trophyPainter = TextPainter(
       text: const TextSpan(text: '🏆', style: TextStyle(fontSize: 14)),
       textDirection: TextDirection.ltr,
     )..layout();
-    trophyPainter.paint(canvas, Offset(hudRect.left + 8, hudRect.center.dy - trophyPainter.height / 2));
+    trophyPainter.paint(canvas, settingsCenter - Offset(trophyPainter.width / 2, trophyPainter.height / 2));
 
-    final scorePainter = TextPainter(
-      text: TextSpan(
-        text: '$score',
-        style: const TextStyle(
-          color: Color(0xFFFFD84D),
-          fontSize: 13.5,
-          fontWeight: FontWeight.w900,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    scorePainter.paint(canvas, Offset(hudRect.left + 30, hudRect.center.dy - scorePainter.height / 2));
+    // 2. Viên Ngọc Xanh (Diamonds)
+    final gemPill = Rect.fromLTWH(settingsCenter.dx - 92, rect.top + 7, 70, 26);
+    _drawCurrencyPill(canvas, gemPill, '💎', '120', const Color(0xFF29B6F6));
 
-    // Huy hiệu màn chơi ở bên trái (né nút Pause & Hướng dẫn (?))
-    final levelRect = Rect.fromLTWH(rect.left + 84, rect.top + 8, 86, 28);
+    // 3. Viên Xu Vàng (Coins)
+    final coinPill = Rect.fromLTWH(gemPill.left - 78, rect.top + 7, 72, 26);
+    _drawCurrencyPill(canvas, coinPill, '🟡', '$score', const Color(0xFFFFD54F));
+  }
+
+  void _drawCurrencyPill(Canvas canvas, Rect pillRect, String icon, String value, Color accentColor) {
     canvas.drawRRect(
-      RRect.fromRectAndRadius(levelRect.shift(const Offset(0, 2)), const Radius.circular(14)),
+      RRect.fromRectAndRadius(pillRect.shift(const Offset(0, 2)), const Radius.circular(13)),
       Paint()..color = Colors.black26,
     );
     canvas.drawRRect(
-      RRect.fromRectAndRadius(levelRect, const Radius.circular(14)),
-      Paint()..color = const Color(0xFF2B1D14),
+      RRect.fromRectAndRadius(pillRect, const Radius.circular(13)),
+      Paint()..color = const Color(0xEE1E282D),
     );
     canvas.drawRRect(
-      RRect.fromRectAndRadius(levelRect, const Radius.circular(14)),
+      RRect.fromRectAndRadius(pillRect, const Radius.circular(13)),
       Paint()
-        ..color = const Color(0xFF9E633A)
+        ..color = accentColor.withValues(alpha: 0.8)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.2,
     );
-    final lvlPainter = TextPainter(
+
+    final iconPainter = TextPainter(text: TextSpan(text: icon, style: const TextStyle(fontSize: 12)), textDirection: TextDirection.ltr)..layout();
+    iconPainter.paint(canvas, Offset(pillRect.left + 6, pillRect.center.dy - iconPainter.height / 2));
+
+    final valPainter = TextPainter(
       text: TextSpan(
-        text: currentLevel == 0 ? 'Hướng Dẫn' : 'Màn $currentLevel',
-        style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold),
+        text: value,
+        style: TextStyle(color: accentColor, fontSize: 11.0, fontWeight: FontWeight.bold),
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    lvlPainter.paint(
-      canvas,
-      Offset(levelRect.center.dx - lvlPainter.width / 2, levelRect.center.dy - lvlPainter.height / 2),
-    );
+    valPainter.paint(canvas, Offset(pillRect.left + 24, pillRect.center.dy - valPainter.height / 2));
   }
 
-  /// 5. Ghế Chờ Holding Dock: Chiếc ghế công viên bằng gỗ có thanh tựa lưng, chân ghế đổ bóng và chia vạch 5 chỗ
+  /// 5. Ghế Chờ Holding Dock Bằng Gỗ Công Viên 2.5D Chuẩn Hình Mẫu
   void _drawHoldingDockBench(Canvas canvas) {
     if (scaler.dockSlotRects.isEmpty) return;
 
-    final double benchLeft = scaler.dockSlotRects.first.left - 10;
-    final double benchRight = scaler.dockSlotRects.last.right + 10;
+    final double benchLeft = scaler.dockSlotRects.first.left - 12;
+    final double benchRight = scaler.dockSlotRects.last.right + 12;
     final double benchWidth = benchRight - benchLeft;
     final Rect seatBandRect = Rect.fromLTWH(
       benchLeft,
-      scaler.dockSlotRects[startSlot].top - 3,
+      scaler.dockSlotRects.first.top - 4,
       benchWidth,
-      scaler.dockSlotRects[startSlot].height + 6,
+      scaler.dockSlotRects.first.height + 8,
     );
 
-    // 1. Bóng đổ mềm của toàn bộ ghế công viên xuống thảm cỏ
+    // 1. Bóng đổ mềm của ghế công viên xuống mặt cỏ
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-        Rect.fromLTWH(benchLeft + 3, seatBandRect.bottom + 3, benchWidth - 6, 7),
-        const Radius.circular(5),
+        Rect.fromLTWH(benchLeft + 4, seatBandRect.bottom + 4, benchWidth - 8, 8),
+        const Radius.circular(6),
       ),
       Paint()
-        ..color = Colors.black26
+        ..color = Colors.black.withValues(alpha: 0.22)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
     );
 
-    // 2. Chân ghế gỗ/sắt đổ bóng hai bên
-    final Paint legShadowPaint = Paint()..color = const Color(0xFF3E2723);
-    final Paint legWoodPaint = Paint()..color = const Color(0xFF6D4226);
-    for (final legX in [benchLeft + 14, benchRight - 22]) {
-      final Rect legRect = Rect.fromLTWH(legX, seatBandRect.bottom - 2, 8, 10);
-      canvas.drawRRect(RRect.fromRectAndRadius(legRect.shift(const Offset(1, 2)), const Radius.circular(2)), legShadowPaint);
-      canvas.drawRRect(RRect.fromRectAndRadius(legRect, const Radius.circular(2)), legWoodPaint);
+    // 2. Chân ghế sắt đen uốn cong cổ điển
+    final Paint ironLegPaint = Paint()..color = const Color(0xFF263238);
+    for (final legX in [benchLeft + 16, benchRight - 24]) {
+      final Rect legRect = Rect.fromLTWH(legX, seatBandRect.bottom - 2, 8, 12);
+      canvas.drawRRect(RRect.fromRectAndRadius(legRect, const Radius.circular(3)), ironLegPaint);
     }
 
-    // 3. Trụ và Thanh Tựa Lưng (Backrest) phía trên ghế
-    for (final postX in [benchLeft + 14, benchRight - 22]) {
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(Rect.fromLTWH(postX, seatBandRect.top - 14, 8, 18), const Radius.circular(2)),
-        Paint()..color = const Color(0xFF6D4226),
-      );
-    }
-    final Rect backrestPlank = Rect.fromLTWH(benchLeft + 4, seatBandRect.top - 13, benchWidth - 8, 10);
+    // 3. Tựa lưng gỗ công viên (Backrest) có khắc nhãn "Holding Dock"
+    final Rect backrestPlank = Rect.fromLTWH(benchLeft + 4, seatBandRect.top - 14, benchWidth - 8, 12);
     canvas.drawRRect(
       RRect.fromRectAndRadius(backrestPlank.shift(const Offset(0, 2)), const Radius.circular(5)),
-      Paint()..color = const Color(0xFF6D4226),
+      Paint()..color = const Color(0xFF5A3317),
     );
     canvas.drawRRect(
-      RRect.fromRectAndRadius(backrestPlank, const Radius.circular(4)),
+      RRect.fromRectAndRadius(backrestPlank, const Radius.circular(5)),
       Paint()
-        ..shader = LinearGradient(
+        ..shader = const LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFFB37447), Color(0xFF9E633A)],
+          colors: [Color(0xFFD49B6A), Color(0xFF9E633A)],
         ).createShader(backrestPlank),
     );
 
     final int slotCount = scaler.dockSlotRects.length;
     final labelPainter = TextPainter(
       text: TextSpan(
-        text: slotCount > 5 ? 'GHẾ CHỜ ($slotCount CHỖ - VIP)' : 'GHẾ CHỜ (5 CHỖ)',
+        text: slotCount > 5 ? 'Holding Dock (VIP)' : 'Holding Dock',
         style: const TextStyle(
           color: Color(0xFFFFF8E1),
-          fontSize: 8.5,
+          fontSize: 9.0,
           fontWeight: FontWeight.w900,
-          letterSpacing: 0.6,
+          letterSpacing: 0.8,
         ),
       ),
       textDirection: TextDirection.ltr,
@@ -641,47 +767,41 @@ class BusStationPainter extends CustomPainter {
       Offset(backrestPlank.center.dx - labelPainter.width / 2, backrestPlank.center.dy - labelPainter.height / 2),
     );
 
-    // 4. Mặt ghế dài 2.5D (#6D4226 đế + #9E633A mặt gỗ)
+    // 4. Mặt ghế gỗ nan caramen 2.5D
     canvas.drawRRect(
-      RRect.fromRectAndRadius(seatBandRect.shift(const Offset(0, 4)), const Radius.circular(11)),
+      RRect.fromRectAndRadius(seatBandRect.shift(const Offset(0, 4)), const Radius.circular(10)),
       Paint()..color = const Color(0xFF6D4226),
     );
     canvas.drawRRect(
-      RRect.fromRectAndRadius(seatBandRect, const Radius.circular(11)),
-      Paint()..color = const Color(0xFF9E633A),
+      RRect.fromRectAndRadius(seatBandRect, const Radius.circular(10)),
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFFB37447), Color(0xFF8D532B)],
+        ).createShader(seatBandRect),
     );
 
-    // 5. Chia vạch 5 (hoặc 6 VIP) chỗ ngồi rõ ràng và vẽ thú cưng bằng draw25DPetBlock
+    // 5. Vẽ từng vị trí ghế ngồi & thú cưng ngồi thư giãn
     for (int i = 0; i < scaler.dockSlotRects.length; i++) {
       final slotRect = scaler.dockSlotRects[i];
       final slot = (i < holdingDock.length) ? holdingDock[i] : null;
+      final isVip = i >= 5 || (slot != null && slot.isVip);
 
-      final Color cushionColor = isVip ? const Color(0xFFFFD84D) : const Color(0xFF4A2E1B);
-      final Color borderColor = isVip ? const Color(0xFFB87D0E) : const Color(0xFF3B2314);
+      final Color cushionColor = isVip ? const Color(0xFFFFD84D) : const Color(0xFF4A2810);
+      final Color borderColor = isVip ? const Color(0xFFB87D0E) : const Color(0xFF6B3A18);
 
       canvas.drawRRect(
-        RRect.fromRectAndRadius(slotRect, const Radius.circular(6)),
+        RRect.fromRectAndRadius(slotRect, const Radius.circular(7)),
         Paint()..color = cushionColor,
       );
       canvas.drawRRect(
-        RRect.fromRectAndRadius(slotRect, const Radius.circular(6)),
+        RRect.fromRectAndRadius(slotRect, const Radius.circular(7)),
         Paint()
           ..color = borderColor
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.6,
+          ..strokeWidth = 1.5,
       );
-
-      // Vạch chia chỗ ngồi giữa các slot
-      if (i < scaler.dockSlotRects.length - 1) {
-        final double divX = (slotRect.right + scaler.dockSlotRects[i + 1].left) / 2;
-        canvas.drawLine(
-          Offset(divX, seatBandRect.top + 4),
-          Offset(divX, seatBandRect.bottom - 4),
-          Paint()
-            ..color = const Color(0xFF6D4226)
-            ..strokeWidth = 2.0,
-        );
-      }
 
       if (slot != null && slot.isLocked) {
         final lockPaint = Paint()
@@ -690,34 +810,23 @@ class BusStationPainter extends CustomPainter {
           ..strokeWidth = 1.6;
         canvas.drawCircle(slotRect.center, 5, lockPaint);
       } else if (slot != null && slot.petColor != null) {
-        // Vẽ bé thú cưng ngồi trên ghế chờ bằng chuẩn Kawaii25DRenderer theo Skin đang chọn
-        final double side = math.min(slotRect.width, slotRect.height) - 6.0;
+        // Bé thú cưng 2.5D ngồi trên ghế chờ với tai nhô cao
+        final double side = math.min(slotRect.width, slotRect.height) - 4.0;
         final Rect petRect = Rect.fromCenter(center: slotRect.center, width: side, height: side);
         Kawaii25DRenderer.drawBlock(canvas, petRect, slot.petColor!, skin: skin, animateIdle: false);
-      }
-    }
-
-    // 6. Nhãn phụ bên dưới ghế (e.g. "Holding Dock" chuẩn ảnh mẫu)
-    if (subtitleLabel != null) {
-      final subPainter = TextPainter(
-        text: TextSpan(
-          text: subtitleLabel,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 10.5,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 0.4,
-            shadows: [
-              Shadow(color: Colors.black87, offset: Offset(0, 1.5), blurRadius: 3),
-            ],
+      } else if (isVip) {
+        final vipPainter = TextPainter(
+          text: const TextSpan(
+            text: 'VIP',
+            style: TextStyle(color: Color(0xFF9E4105), fontSize: 9.0, fontWeight: FontWeight.w900),
           ),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      subPainter.paint(
-        canvas,
-        Offset(seatBandRect.center.dx - subPainter.width / 2, seatBandRect.bottom + 6),
-      );
+          textDirection: TextDirection.ltr,
+        )..layout();
+        vipPainter.paint(
+          canvas,
+          Offset(slotRect.center.dx - vipPainter.width / 2, slotRect.center.dy - vipPainter.height / 2),
+        );
+      }
     }
   }
 
@@ -765,40 +874,5 @@ class BusStationPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant BusStationPainter oldDelegate) {
-    if (oldDelegate.score != score ||
-        oldDelegate.currentLevel != currentLevel ||
-        oldDelegate.streak != streak ||
-        oldDelegate.coins != coins ||
-        oldDelegate.activeBus != activeBus ||
-        oldDelegate.nextBus != nextBus ||
-        oldDelegate.departingBus != departingBus ||
-        oldDelegate.departureProgress != departureProgress ||
-        oldDelegate.arrivalProgress != arrivalProgress ||
-        oldDelegate.busBounceProgress != busBounceProgress ||
-        oldDelegate.totalBusesInLevel != totalBusesInLevel ||
-        oldDelegate.totalDispatchedCount != totalDispatchedCount ||
-        oldDelegate.queuedBuses != queuedBuses ||
-        oldDelegate.skin != skin ||
-        oldDelegate.scaler != scaler ||
-        oldDelegate.flyingPets != flyingPets ||
-        flyingPets.isNotEmpty ||
-        departureProgress < 1.0 ||
-        arrivalProgress < 1.0 ||
-        busBounceProgress < 1.0 ||
-        oldDelegate.holdingDock.length != holdingDock.length) {
-      return true;
-    }
-    final occupied = holdingDock.where((s) => s.petColor != null).length;
-    if (occupied >= holdingDock.length - 1 && occupied > 0) {
-      return true;
-    }
-    for (int i = 0; i < holdingDock.length; i++) {
-      if (oldDelegate.holdingDock[i].petColor != holdingDock[i].petColor ||
-          oldDelegate.holdingDock[i].isLocked != holdingDock[i].isLocked) {
-        return true;
-      }
-    }
-    return false;
-  }
+  bool shouldRepaint(covariant BusStationPainter oldDelegate) => true;
 }
