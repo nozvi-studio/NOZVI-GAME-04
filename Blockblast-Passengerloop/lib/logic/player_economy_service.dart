@@ -94,12 +94,7 @@ class PlayerEconomyService extends ChangeNotifier {
 
       _starterHammerLevel = (prefs.getInt(_prefHammerUpgradeKey) ?? 0).clamp(0, 3);
       _starterCompassLevel = (prefs.getInt(_prefCompassUpgradeKey) ?? 0).clamp(0, 2);
-<<<<<<< HEAD
       _unlockedLevel = (prefs.getInt(_prefUnlockedLevelKey) ?? 1).clamp(1, 500);
-=======
-      _starterMagnetLevel = (prefs.getInt(_prefMagnetUpgradeKey) ?? 1).clamp(1, 2);
-      _unlockedLevel = (prefs.getInt(_prefUnlockedLevelKey) ?? 1).clamp(1, 200);
->>>>>>> 9c029f433040f9f1582aba761103e9d6623e2aeb
 
       _levelStars.clear();
       for (int i = 1; i <= 500; i++) {
